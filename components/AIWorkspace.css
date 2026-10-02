@@ -38,7 +38,7 @@ html[data-layout="terminal"] #content .ai-workspace .ai-welcome h2 { font-size: 
 .ai-workspace .ai-suggestions button { padding: 7px 10px; }
 .ai-workspace .ai-suggestions strong { font-size: 14px; font-weight: 500; }
 .ai-workspace .ai-suggestions small { font-size: 13px; }
-.ai-suggestion-batch { min-height: 174px; opacity: 1; transition: opacity 220ms ease-in-out; }
+.ai-suggestion-batch { min-height: 174px; opacity: 1; transition: opacity 1500ms cubic-bezier(0.4, 0, 0.2, 1); }
 .ai-suggestion-batch.is-fading { opacity: 0; pointer-events: none; }
 .ai-suggestion-row { display: flex; align-items: center; gap: 6px; }
 .ai-workspace .ai-suggestion-row button { flex: 1; min-width: 0; min-height: 58px; }

@@ -15,8 +15,8 @@ export default function ChatSuggestions({ onChoose }) {
       swap = setTimeout(() => {
         setSelected(previous => nextSuggestions(previous));
         setFading(false);
-      }, 220);
-    }, 6000);
+      }, window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 1500);
+    }, 15000);
     return () => { clearInterval(timer); clearTimeout(swap); };
   }, []);
 
