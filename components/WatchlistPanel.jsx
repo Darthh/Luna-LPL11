@@ -93,6 +93,8 @@ export default function WatchlistPanel() {
   useEffect(() => {
     try {
       const saved = localStorage.getItem(SORT_KEY);
+      // Saved sort lives in browser storage, readable only after hydration.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (SORTS.some((s) => s.key === saved)) setSort(saved);
     } catch {
       /* stay on the manual order */

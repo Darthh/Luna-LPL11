@@ -61,6 +61,8 @@ export default function Home({ initialFg = null, defaultTicker = "SPY" }) {
   }, []);
 
   useEffect(() => {
+    // Initial load runs once after mount; handleLoad sets loading state.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     handleLoad(defaultTicker);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
