@@ -1,11 +1,21 @@
 # Financial AI preview
 
-The chat model picker offers Luna Finance, AWS Claude Haiku 4.5, and AWS GPT-5.4.
-Claude uses Bedrock Converse; GPT-5.4 uses Bedrock Mantle's OpenAI-compatible
-Chat Completions endpoint. Both authenticate through the standard AWS SDK
+The top chat choices are AWS GPT-5.6 Sol (first and default) and AWS Claude
+Opus 5. Every newly created chat resets to GPT-5.6 Sol, including a new chat
+after selecting another hosted or local model. Other existing model choices
+remain available.
+
+Both models use Bedrock Converse and authenticate through the standard AWS SDK
 credential chain. On Lambda this is the execution role, not a participant's
-temporary credentials. GPT-5.4 is an OpenAI model hosted by AWS, not a ChatGPT
+temporary credentials. GPT is an OpenAI model hosted by AWS, not a ChatGPT
 subscription or a connection to a user's ChatGPT conversations.
+
+On 2026-10-02, the workshop role explicitly denied Claude Opus 5.5 and Fable
+5.1 and GPT-6 Astra cross-region inference. GPT-6 Astra Mantle is restricted
+to Oregon, which the workshop region policy denies. Fable 5 required an
+AWS-review data-retention opt-in that is not enabled. GPT-5.6 Sol and Opus 5
+passed a live tool-and-answer test under the existing policy and retention
+settings. These restrictions were not changed for the upgrade.
 
 Every model shares the existing quote, historical price, market sentiment,
 and site-navigation tools. A planning turn must request a tool before an
@@ -26,7 +36,7 @@ Open `/dashboard/chat`, select an AWS model, and try:
 
 Check the returned `data` events in `/api/ai-chat` against the prose. The model
 must report unavailable feeds rather than supply remembered market numbers.
-GPT currently returns its final answer together; Claude streams tokens.
+Both GPT and Claude stream answer tokens.
 
 ## Deployment
 

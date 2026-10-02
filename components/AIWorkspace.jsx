@@ -9,7 +9,7 @@ import ChatSuggestions from "@/components/ChatSuggestions";
 import { ollamaModels, ollamaChat } from "@/lib/ollamaClient.mjs";
 import { readChats, saveChat } from "@/lib/chatHistory";
 import { STOCK_RANGES, buildStockCard, chartGeometry, stockLookupForMessage } from "@/lib/chatStockCard.mjs";
-import { HOSTED_MODELS } from "@/lib/hostedModels.mjs";
+import { HOSTED_MODELS, DEFAULT_HOSTED_MODEL } from "@/lib/hostedModels.mjs";
 
 const LOCAL_KEY = "lunaLocalModel";
 const LOCAL_SECRET_KEY = "lunaLocalModelKey";
@@ -228,7 +228,7 @@ export default function AIWorkspace({ chatId = null }) {
   const [ollamaModel, setOllamaModel] = useState("");
   const [modelStatus, setModelStatus] = useState("");
   const [refreshing, setRefreshing] = useState(false);
-  const [hostedModel, setHostedModel] = useState(HOSTED_MODELS[0].id);
+  const [hostedModel, setHostedModel] = useState(DEFAULT_HOSTED_MODEL);
   const [local, setLocal] = useState({ endpoint: "http://localhost:11434/v1", model: "qwen3.8:27b", key: "", remember: false });
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [messages, setMessages] = useState([]);
@@ -246,6 +246,10 @@ export default function AIWorkspace({ chatId = null }) {
     setMessages(chat?.messages || []);
     setInput("");
     setError("");
+    if (!chatId) {
+      setMode("hosted");
+      setHostedModel(DEFAULT_HOSTED_MODEL);
+    }
   }, [chatId]);
 
   useEffect(() => {
@@ -254,6 +258,9 @@ export default function AIWorkspace({ chatId = null }) {
       setMessages([]);
       setInput("");
       setError("");
+      setMode("hosted");
+      setHostedModel(DEFAULT_HOSTED_MODEL);
+      setSettingsOpen(false);
     };
     window.addEventListener("luna-new-chat", reset);
     return () => window.removeEventListener("luna-new-chat", reset);
