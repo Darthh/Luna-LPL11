@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import "./AIWorkspace.css";
 import { researchMessages } from "@/lib/chatResearch.mjs";
 import LunaAILogo from "@/components/LunaAILogo";
-import { canUseOllama, ollamaModels, ollamaChat } from "@/lib/ollamaClient.mjs";
+import { ollamaModels, ollamaChat } from "@/lib/ollamaClient.mjs";
 import { readChats, saveChat } from "@/lib/chatHistory";
 import { STOCK_RANGES, buildStockCard, chartGeometry, stockLookupForMessage } from "@/lib/chatStockCard.mjs";
 import { HOSTED_MODELS } from "@/lib/hostedModels.mjs";
@@ -229,7 +229,6 @@ export default function AIWorkspace({ chatId = null }) {
   const modelWindow = useRef(null);
   const modelTrigger = useRef(null);
   const [mode, setMode] = useState("hosted");
-  const [ollamaAvailable, setOllamaAvailable] = useState(false);
   const [installedModels, setInstalledModels] = useState([]);
   const [ollamaModel, setOllamaModel] = useState("");
   const [modelStatus, setModelStatus] = useState("");
@@ -266,14 +265,12 @@ export default function AIWorkspace({ chatId = null }) {
   }, []);
 
   useEffect(() => {
-    // This connection targets the browser's computer, not the Luna server.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setOllamaAvailable(canUseOllama());
     try {
       const saved = JSON.parse(localStorage.getItem(LOCAL_KEY) || "null");
       const key = sessionStorage.getItem(LOCAL_SECRET_KEY) || "";
       // Browser storage does not exist during the server render; mirror it
       // once after hydration, as DashboardProvider does for the panel layout.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (saved) setLocal((current) => ({ ...current, ...saved, key }));
     } catch {}
   }, []);
@@ -485,16 +482,22 @@ export default function AIWorkspace({ chatId = null }) {
         {settingsOpen && (
           <div ref={modelWindow} id="ai-model-window" className="ai-settings" role="dialog" aria-label="Choose a model">
             <div className="ai-mode-switch" role="group" aria-label="AI connection">
-              <button type="button" disabled={busy} className={mode === "hosted" ? "is-active" : ""} onClick={() => switchMode("hosted")}>Luna hosted</button>
-              {ollamaAvailable && <button type="button" disabled={busy} className={mode === "ollama" ? "is-active" : ""} onClick={() => switchMode("ollama")}>Ollama</button>}
+              <button type="button" disabled={busy} aria-pressed={mode === "hosted"} className={mode === "hosted" ? "is-active" : ""} onClick={() => switchMode("hosted")}>AI model</button>
+              <button type="button" disabled={busy} aria-pressed={mode !== "hosted"} className={mode !== "hosted" ? "is-active" : ""} onClick={() => switchMode("ollama")}>Local hosted</button>
             </div>
             <div className="ai-settings-head">
               <div>
-                <strong>{mode === "hosted" ? "Luna hosted model" : "Local model connection"}</strong>
+                <strong>{mode === "hosted" ? "AI model" : "Local hosted model"}</strong>
                 <p>{mode === "hosted" ? "Uses Luna's configured AI provider and live market tools." : mode === "ollama" ? "Uses Ollama on this computer. No API key or Luna account required; chat is sent directly to Ollama." : "Your endpoint and key stay in this browser and are sent only to the endpoint below."}</p>
               </div>
               <button type="button" onClick={() => setSettingsOpen(false)} aria-label="Close connection settings">×</button>
             </div>
+            {mode !== "hosted" && (
+              <div className="ai-mode-switch" role="group" aria-label="Local connection type">
+                <button type="button" className={mode === "ollama" ? "is-active" : ""} onClick={() => switchMode("ollama")}>Ollama</button>
+                <button type="button" className={mode === "local" ? "is-active" : ""} onClick={() => switchMode("local")}>Custom endpoint</button>
+              </div>
+            )}
             {mode === "hosted" ? (
               <div className="ai-model-grid">
                 {HOSTED_MODELS.map((model) => (

@@ -9,16 +9,23 @@ export default $config({
     // Preview hosting uses Lambda IAM, never the workshop session credentials.
     // Account persistence is deliberately not provisioned by this AI preview.
     const authSecret = new sst.Secret("AuthSecret");
+    const geminiSecret = process.env.ENABLE_GEMINI === "true" ? new sst.Secret("GeminiApiKey") : null;
     const site = new sst.aws.Nextjs("Site", {
       buildCommand: "node scripts/build-aws.mjs",
-      environment: { AUTH_SECRET: authSecret.value, AUTH_TRUST_HOST: "true", BEDROCK_REGION: "us-east-1" },
+      environment: { AUTH_SECRET: authSecret.value, AUTH_TRUST_HOST: "true", BEDROCK_REGION: "us-east-1",
+        ...(geminiSecret ? { GEMINI_API_KEY: geminiSecret.value } : {}) },
       permissions: [
         { actions: ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"], resources: [
-          "arn:aws:bedrock:*::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0",
-          "arn:aws:bedrock:us-east-1:*:inference-profile/us.anthropic.claude-haiku-4-5-20251001-v1:0",
+          "arn:aws:bedrock:*::foundation-model/anthropic.claude-sonnet-5-5",
+          "arn:aws:bedrock:*:*:inference-profile/global.anthropic.claude-sonnet-5-5",
+          "arn:aws:bedrock:*::foundation-model/meta.llama4-maverick-17b-instruct-v1:0",
+          "arn:aws:bedrock:*:*:inference-profile/us.meta.llama4-maverick-17b-instruct-v1:0",
+          "arn:aws:bedrock:us-east-1::foundation-model/qwen.qwen3-235b-a22b-2507-v1:0",
         ] },
+        { actions: ["bedrock-mantle:CreateInference"], resources: ["arn:aws:bedrock-mantle:us-west-2:*:project/*"],
+          conditions: [{ test: "StringEquals", variable: "bedrock-mantle:Model", values: ["openai.gpt-6-astra"] }] },
         { actions: ["bedrock-mantle:CreateInference"], resources: ["arn:aws:bedrock-mantle:us-east-1:*:project/*"],
-          conditions: [{ test: "StringEquals", variable: "bedrock-mantle:Model", values: ["openai.gpt-5.4"] }] },
+          conditions: [{ test: "StringEquals", variable: "bedrock-mantle:Model", values: ["google.gemma-4-31b"] }] },
       ],
       server: { memory: "2048 MB", timeout: "120 seconds" },
     });

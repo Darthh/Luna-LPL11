@@ -7,7 +7,7 @@ import { fetchYahooQuotes } from "@/lib/yahooQuote";
 import { YAHOO_USER_AGENT } from "@/lib/userAgent";
 import { zoneOf } from "@/lib/zone";
 import { GET as fearGreedRoute } from "../fear-greed/route";
-import { hostedModel } from "@/lib/hostedModels.mjs";
+import { DEFAULT_HOSTED_MODEL, hostedModel } from "@/lib/hostedModels.mjs";
 import { planAws, answerAws } from "@/lib/awsChat.mjs";
 
 // The AI Bot's harness: Claude, wired to the same live feeds the rest of the
@@ -295,10 +295,13 @@ export async function POST(request) {
     return Response.json({ error: "No message." }, { status: 400 });
   }
 
-  const requestedModel = typeof body?.model === "string" ? body.model : "luna-finance";
+  const requestedModel = typeof body?.model === "string" ? body.model : DEFAULT_HOSTED_MODEL;
   const config = hostedModel(requestedModel);
   if (!config) {
     return Response.json({ error: "That hosted model is not available." }, { status: 400 });
+  }
+  if (config.provider === "google" && !process.env.GEMINI_API_KEY) {
+    return Response.json({ error: "Gemini requires GEMINI_API_KEY to be configured on the server." }, { status: 503 });
   }
 
   const system = systemPrompt();
@@ -308,13 +311,8 @@ export async function POST(request) {
     async start(controller) {
       const send = (t, v) => controller.enqueue(line(t, v));
 
-      // The local answer is computed first and always. It needs no key, no
-      // network beyond this site's own feeds, and no model - so it is what
-      // gets sent when the model is absent or refuses, rather than an error
-      // message the visitor can do nothing with.
-      const local = await answerLocally(question).catch(() => null);
-
       if (config.provider === "anthropic" && !process.env.ANTHROPIC_API_KEY) {
+        const local = await answerLocally(question).catch(() => null);
         const rendered = renderAnswer(local);
 
         // Not an error - the visitor asked something reasonable that this
@@ -396,8 +394,10 @@ export async function POST(request) {
         await answer.finalMessage();
       } catch (err) {
         if (config.provider !== "anthropic") {
-          console.error("AWS chat failed:", err?.name);
-          send("error", streamed ? "The AWS answer was cut off. Try again." : "This AWS model could not answer. Check AWS credentials, region, model access, and inference permissions.");
+          console.error("Hosted chat failed:", err?.name);
+          send("error", streamed ? "The hosted answer was cut off. Try again." : config.provider === "google"
+            ? "Gemini could not answer. Check the server's Google API key, model access, and quota."
+            : "This AWS model could not answer. Check AWS credentials, region, model access, and inference permissions.");
           return;
         }
         // The model failed - a bad key, no credit, an outage. None of those are
@@ -405,7 +405,8 @@ export async function POST(request) {
         // is sent instead of an error. The reason is logged for whoever runs
         // the site rather than shown to the person who asked a question.
         console.error("Lilo: model call failed, served local answer instead:", err?.error?.error?.message || err?.message || err);
-        const fallback = streamed ? "" : renderAnswer(local);
+        const local = streamed ? null : await answerLocally(question).catch(() => null);
+        const fallback = renderAnswer(local);
         if (fallback) {
           send("text", fallback);
         } else {
