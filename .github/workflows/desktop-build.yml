@@ -1,0 +1,30 @@
+name: Build Luna Terminal desktop
+on:
+  workflow_dispatch:
+jobs:
+  package:
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            target: --win --x64
+          - os: macos-latest
+            target: --mac --arm64 --x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - run: npm ci --prefix desktop
+      - run: npm test --prefix desktop
+      - run: npm run dist --prefix desktop -- ${{ matrix.target }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: luna-terminal-${{ matrix.os }}
+          path: |
+            desktop/dist/*.exe
+            desktop/dist/*.dmg
+          if-no-files-found: error

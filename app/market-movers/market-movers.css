@@ -1,0 +1,10 @@
+.market-movers-page {
+  width: min(100%, 780px);
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.market-movers-page h1 {
+  margin: 0 0 20px;
+  font-size: 1.5rem;
+}

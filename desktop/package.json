@@ -1,0 +1,53 @@
+{
+  "name": "luna-terminal",
+  "productName": "Luna Terminal",
+  "version": "0.1.0",
+  "description": "Luna Terminal desktop with private Ollama chat",
+  "author": "Luna Terminal",
+  "private": true,
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --publish never",
+    "test": "node --test ollama.test.cjs"
+  },
+  "devDependencies": {
+    "electron": "44.3.0",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "com.lunaterminal.desktop",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "ollama.cjs",
+      "offline/**"
+    ],
+    "extraResources": [
+      {
+        "from": "../app/icon1.png",
+        "to": "app/icon1.png"
+      }
+    ],
+    "icon": "../app/icon1.png",
+    "artifactName": "Luna-Terminal-${os}-${arch}.${ext}",
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "category": "public.app-category.finance"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "codex-grid-background",
+        "value": "*",
+        "files": [
+          "app/globals.css"
+        ],
+        "createdAt": "2026-07-31T20:02:33.131Z",
+        "reason": "User confirmed: dots/synapse are opt-in theme backgrounds selected from the Appearance dropdown"
+      },
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "app/globals.css"
+        ],
+        "createdAt": "2026-07-31T20:04:25.448Z"
+      },
+      {
+        "rule": "dark-glow",
+        "value": "*",
+        "files": [
+          "public/stock-game.html"
+        ],
+        "createdAt": "2026-08-08T21:14:38.813Z",
+        "reason": "User confirmed the epic/legendary card aura is a requested game feature"
+      },
+      {
+        "rule": "broken-image",
+        "value": "*",
+        "files": [
+          "public/stock-game.html"
+        ],
+        "createdAt": "2026-08-08T21:14:46.715Z",
+        "reason": "User confirmed: img src is built at runtime (Wikipedia portrait, ticker logo CDN) with onerror fallback to the drawn SVG art underneath"
+      }
+    ]
+  }
+}

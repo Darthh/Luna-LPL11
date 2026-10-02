@@ -1,0 +1,35 @@
+{
+  "name": "sentiment-lab",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "test:seo": "node --experimental-strip-types scripts/test-seo.mjs",
+    "test:brand": "node scripts/test-brand-welcome.mjs",
+    "postinstall": "prisma generate",
+    "db:migrate": "prisma migrate deploy"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.116.0",
+    "@auth/prisma-adapter": "^2.11.2",
+    "@prisma/adapter-pg": "^7.10.0",
+    "@prisma/client": "^7.8.0",
+    "bcryptjs": "^3.0.3",
+    "chart.js": "^4.5.1",
+    "leaflet": "^1.9.4",
+    "next": "^16.3.4",
+    "next-auth": "^5.0.0-beta.31",
+    "react": "19.2.4",
+    "react-chartjs-2": "^5.3.1",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "eslint": "^9",
+    "eslint-config-next": "^16.3.4",
+    "postgres": "^3.4.9",
+    "prisma": "^7.8.0"
+  }
+}

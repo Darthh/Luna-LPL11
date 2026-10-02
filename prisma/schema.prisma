@@ -1,0 +1,238 @@
+// Amazon Aurora DSQL - the app runs on AWS Lambda, which has no persistent
+// local disk, so DSQL is the hosted database backing every request. It speaks
+// the Postgres wire protocol, so this is a plain `postgresql` datasource; the
+// connection is authenticated with a short-lived IAM token rather than a
+// password, which lib/prisma.js mints per client.
+//
+// The User/Account/Session/VerificationToken shape follows Auth.js's Prisma
+// adapter contract (https://authjs.dev/getting-started/adapters/prisma).
+//
+// Unlike D1, DSQL has real transactions, so prisma.$transaction rolls back
+// here. The compare-and-swap in app/api/spy-gex/history/route.js is left in
+// place anyway - it is correct either way and costs one extra column read.
+//
+// DSQL is distributed and uses optimistic concurrency: a write that conflicts
+// comes back as a serialization error rather than blocking, and DDL is limited
+// to one statement per transaction (see prisma/migrations/README.md).
+
+generator client {
+  // The `prisma-client` generator (not the older prisma-client-js) emits an
+  // ESM client, which is what the app is built as.
+  provider     = "prisma-client"
+  output       = "../lib/generated/prisma"
+  runtime      = "nodejs"
+  moduleFormat = "esm"
+}
+
+// Prisma 7 keeps connection URLs out of the schema: the CLI reads
+// prisma.config.mjs, and the client is handed a URL at construction time
+// (lib/prisma.js, which signs a fresh IAM token for it).
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id                 String           @id @default(cuid())
+  name               String?
+  email              String?          @unique
+  emailVerified      DateTime?
+  image              String?
+  createdAt          DateTime         @default(now())
+  // Only set for accounts created via email/password. OAuth-only users
+  // (Google) have no password and can't use the credentials sign-in form.
+  passwordHash       String?
+  // Per-account API quota tier — this is the "signed-in users get more
+  // API calls" hook referenced from lib/rateLimit.js.
+  plan               String           @default("free")
+  accounts           Account[]
+  sessions           Session[]
+  apiKeys            ApiKey[]
+  watchlist          WatchlistItem[]
+  forumThreads       ForumThread[]
+  forumReplies       ForumReply[]
+  forumLikesGiven    ForumLike[]      @relation("ForumLikeGiven")
+  forumLikesReceived ForumLike[]      @relation("ForumLikeReceived")
+  alerts             FearGreedAlert[]
+}
+
+// Client records belong to one advisor account. Portfolio details are a
+// validated JSON document stored as text for Aurora DSQL compatibility.
+model AdvisorClient {
+  id        String   @id @default(cuid())
+  userId    String
+  data      String
+  revision  Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// A signed-in user's personal watchlist. Symbols are stored uppercase and
+// deduped per user by the unique constraint; `name` is the company/fund name
+// captured at the time it was added, so a row can render without a second
+// lookup. `position` is the order the user dragged the rows into — rows added
+// before that column existed share position 0, so createdAt breaks the tie.
+model WatchlistItem {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  symbol    String
+  name      String?
+  // Shares held, for the portfolio views on /watchlist. Null means the ticker
+  // is watched but not owned, which is what a plain watchlist row is.
+  shares    Float?
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, symbol])
+  @@index([userId, position])
+}
+
+// The forums were removed from the site — no page or API reads these three
+// models any more. They're kept so the posts already in the database survive:
+// dropping them is a one-way migration, so it's left as a deliberate cleanup
+// step rather than a side effect of taking the section down.
+model ForumThread {
+  id        String       @id @default(cuid())
+  sector    String
+  title     String
+  body      String
+  createdAt DateTime     @default(now())
+  authorId  String
+  author    User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  replies   ForumReply[]
+  likes     ForumLike[]
+
+  @@index([sector, createdAt])
+}
+
+model ForumReply {
+  id        String      @id @default(cuid())
+  body      String
+  createdAt DateTime    @default(now())
+  threadId  String
+  thread    ForumThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  likes     ForumLike[]
+
+  @@index([threadId, createdAt])
+}
+
+// Exactly one of threadId/replyId is set, enforced at the API layer — this
+// lets a single like model cover both an original post (ForumThread) and a
+// reply (ForumReply) without duplicating the toggle/count logic per type.
+// receiverId is denormalized from the liked post's author so lifetime
+// "Likes Received" can be read directly off User._count without a join
+// across both content types.
+model ForumLike {
+  id         String       @id @default(cuid())
+  createdAt  DateTime     @default(now())
+  userId     String
+  user       User         @relation("ForumLikeGiven", fields: [userId], references: [id], onDelete: Cascade)
+  receiverId String
+  receiver   User         @relation("ForumLikeReceived", fields: [receiverId], references: [id], onDelete: Cascade)
+  threadId   String?
+  thread     ForumThread? @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  replyId    String?
+  reply      ForumReply?  @relation(fields: [replyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, threadId])
+  @@unique([userId, replyId])
+  @@index([receiverId])
+}
+
+// One row, id "latest". The clip bot runs on a PC and keeps its log in a
+// local SQLite file, which a serverless deployment can never read - so after
+// each pass it pushes a snapshot here and the hosted dashboard reads that.
+// Rows, not rollups: /api/clips does the same summarising either way.
+model ClipSnapshot {
+  id        String   @id
+  payload   String
+  updatedAt DateTime @updatedAt
+}
+
+// An issued API key. Only the SHA-256 hash is stored: the plaintext key is
+// shown once at creation and is unrecoverable afterwards, so a database leak
+// does not hand out working credentials. `prefix` is the first few characters
+// kept in clear so the dashboard can label a row ("sk_live_a1b2...") without
+// being able to reconstruct the secret.
+model ApiKey {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  hash       String    @unique
+  prefix     String
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+
+  @@index([userId, createdAt])
+}
+
+// A standing request to be emailed when the Fear and Greed index crosses a
+// level. `direction` is "above" or "below" and `threshold` is the 0-100 level.
+//
+// Crossings, not levels: `lastValue` holds the index reading at the last check
+// so the cron can fire only on the transition. Without it an alert set at
+// "below 10" would send every single day the index sat at 8, which is how an
+// alert feature turns into a spam feature and gets the sending domain burned.
+//
+// email is denormalised off User rather than joined at send time: a user may
+// want alerts at an address other than the one they signed in with, and the
+// column is what the cron actually sends to.
+model FearGreedAlert {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  email      String
+  direction  String
+  threshold  Int
+  // Null until the first check establishes a baseline. A brand new alert does
+  // not fire on its first run - there is no previous reading to have crossed
+  // from, and firing would mean "below 10" alerting on a market that has been
+  // sitting at 8 for a week.
+  lastValue  Int?
+  lastSentAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId])
+}

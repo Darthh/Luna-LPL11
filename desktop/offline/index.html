@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en" data-theme="luna"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'">
+<title>Luna Terminal</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<header class="site"><a class="brand" href="index.html"><span class="brand-mark">↗</span>Luna Terminal</a>
+<span class="header-caption">Your research terminal. On your computer.</span>
+<div class="header-actions"><span class="local-badge">● Local workspace</span><label class="theme-label">Theme <select id="theme"><option value="luna">Luna</option><option value="dark">Dark</option></select></label></div></header>
+<nav class="sidebar" aria-label="Main">
+<button class="nav-item active" id="home">⌂ <span>Home</span></button>
+<button class="nav-item" data-page="overview">◎ <span>Global markets ↗</span></button>
+<p class="nav-label">DASHBOARD</p>
+<button class="nav-item" data-page="dashboard">◴ <span>Fear and greed meter ↗</span></button>
+<button class="nav-item" data-page="dashboard">⌁ <span>Index vs Stock ↗</span></button>
+<p class="nav-label">RESEARCH TOOLS</p>
+<button class="nav-item" data-page="maps">▧ <span>Stock Maps ↗</span></button>
+<button class="nav-item" data-page="screener">⌕ <span>Stock screener ↗</span></button>
+<button class="nav-item" data-page="earnings">▦ <span>Earnings Calendar ↗</span></button>
+<button class="nav-item" data-page="hedgefunds">▤ <span>Hedge fund holdings ↗</span></button>
+<p class="nav-label">ON THIS COMPUTER</p>
+<button class="nav-item" id="focus-chat">◉ <span>Lilo AI</span><span class="tiny-badge">LOCAL</span></button>
+<button class="nav-item" id="setup-link">⚙ <span>Model setup</span></button>
+<div class="sidebar-bottom"><span class="connection-dot"></span> Ollama integration<p>Links marked ↗ open the live terminal and require internet.</p></div>
+</nav>
+<main>
+<div class="page-heading"><div><p class="eyebrow">YOUR WORKSPACE</p><h1>Welcome to Luna Terminal</h1></div><button data-page="overview" class="primary">Open live dashboard ↗</button></div>
+<div class="workspace">
+<div class="overview-column">
+<section class="card"><div class="card-heading"><h2>U.S. equity markets</h2><span class="subtle">Online data</span></div>
+<table><thead><tr><th>MAJOR INDICES &amp; ETFS</th><th>PRICE</th></tr></thead><tbody>
+<tr><td>S&amp;P 500</td><td>—</td></tr><tr><td>Nasdaq 100</td><td>—</td></tr><tr><td>Dow Jones</td><td>—</td></tr><tr><td>Russell 2000</td><td>—</td></tr><tr><td>CBOE VIX</td><td>—</td></tr></tbody></table>
+<p class="card-note">Open the live dashboard for current prices and charts.</p><button class="text-button" data-page="overview">View markets ↗</button></section>
+<section class="card"><div class="card-heading"><h2>Your local models</h2><span id="model-count" class="tiny-badge">OLLAMA</span></div>
+<p class="card-note">Run your own assistant without a cloud API key.</p>
+<label for="model">Active model</label><select id="model"><option value="">Choose a model</option></select>
+<button id="refresh" class="wide">Refresh models</button><p id="status" role="status" class="status"></p></section>
+<section class="card" id="setup"><div class="card-heading"><h2>Ready for offline</h2><span class="tiny-badge">SETUP</span></div>
+<ol><li>Install Ollama from <button class="text-button inline" data-page="ollama">ollama.com ↗</button>.</li><li>Start Ollama and download a model:<code>ollama pull llama3.2</code></li><li>Refresh models and start chatting.</li></ol>
+<p class="card-note">The first model download needs internet. After that, local chat works offline.</p></section>
+</div>
+<div class="main-column">
+<section class="card welcome-card"><span class="lilo-logo"><img src="../../app/icon1.png" alt="" width="38" height="38"></span><div><h2>A familiar terminal. A private assistant.</h2><p>Explore markets online. Think things through with Lilo on your own computer.</p></div></section>
+<section class="card chat-card" aria-label="Lilo AI assistant">
+<div class="chat-heading"><div class="chat-title"><img src="../../app/icon1.png" alt="" width="30" height="30"><h2>Lilo AI</h2><span class="tiny-badge">LOCAL</span></div><button id="clear">New conversation</button></div>
+<div class="chat-scroll"><div id="intro"><span class="intro-icon"><img src="../../app/icon1.png" alt="" width="64" height="64"></span><h2>What would you like to explore?</h2><p>Ask about market concepts, work through an idea, or analyze information you provide.</p><div class="suggestions"><button data-prompt="Explain how the Fear & Greed Index works.">Understand market sentiment</button><button data-prompt="Help me build a checklist for researching a stock.">Build a research checklist</button><button data-prompt="Explain the tradeoffs between diversification and concentration.">Explore portfolio concepts</button></div></div>
+<div id="messages" role="log" aria-live="polite" aria-relevant="additions"></div></div>
+<form id="chat"><label class="sr-only" for="prompt">Ask Lilo AI</label><div class="composer"><textarea id="prompt" maxlength="2000" required placeholder="Ask about a ticker, an idea, or the markets…"></textarea><button id="send" class="primary">Ask ↑</button></div>
+<p class="privacy-note">● Runs on your computer · No live market access · Chat clears when this window closes</p></form>
+</section><p class="workspace-note">Local models can make mistakes. Check sources before acting on an answer.</p>
+</div>
+</div></main>
+<button id="chat-launcher" class="chat-launcher"><img src="../../app/icon1.png" alt="" width="28" height="28">Lilo AI</button>
+<script src="chat.js"></script></body></html>

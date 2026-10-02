@@ -1,0 +1,839 @@
+.crm,
+.drawer {
+  --crm-bg: var(--panel);
+  --crm-panel: var(--chip-bg);
+  --crm-line: var(--border);
+  --crm-muted: color-mix(in srgb, var(--text) 70%, var(--panel));
+  --crm-text: var(--text);
+  --crm-accent: var(--accent);
+  --crm-accent-text: color-mix(in srgb, var(--accent) 55%, var(--text));
+  --crm-accent-bg: color-mix(in srgb, var(--accent) 12%, var(--panel));
+  --crm-success: color-mix(in srgb, #16845e 65%, var(--text));
+  --crm-warning: color-mix(in srgb, #b78222 60%, var(--text));
+  --crm-danger: color-mix(in srgb, #ce4444 65%, var(--text));
+  color-scheme: light;
+}
+:global(html:is([data-theme="dark"], [data-theme="midnight"], [data-theme="ocean"], [data-theme="bloomberg"], [data-theme="ume"])) :is(.crm, .drawer) {
+  color-scheme: dark;
+}
+.crm {
+  display: flex;
+  min-height: min(820px, calc(100vh - 125px));
+  margin: 16px;
+  border: 1px solid var(--crm-line);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--crm-bg);
+  color: var(--crm-text);
+  font-family: var(--font-sans), sans-serif;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.crm *,
+.drawer * {
+  box-sizing: border-box;
+}
+.crm button,
+.drawer button {
+  cursor: pointer;
+  font: inherit;
+}
+.crm button:disabled,
+.drawer button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+.crm button,
+.crm input,
+.crm select,
+.drawer button,
+.drawer input,
+.drawer select,
+.drawer textarea {
+  border: 1px solid var(--crm-line);
+  border-radius: 6px;
+  color: inherit;
+  background: var(--crm-panel);
+  font: inherit;
+}
+.crm button,
+.drawer button {
+  padding: 6px 10px;
+}
+.crm button:hover:not(:disabled),
+.drawer button:hover:not(:disabled) {
+  background: var(--hover-bg);
+}
+.crm :focus-visible,
+.drawer :focus-visible {
+  outline: 2px solid var(--crm-accent);
+  outline-offset: 3px;
+}
+.sidebar {
+  width: 198px;
+  flex: 0 0 198px;
+  border-right: 1px solid var(--crm-line);
+  display: flex;
+  flex-direction: column;
+  background: var(--crm-panel);
+}
+.brand {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 20px 15px;
+}
+.brand strong {
+  font-size: 13px;
+  font-weight: 550;
+}
+.brand small,
+.sideFoot small {
+  display: block;
+  font-size: 10px;
+  color: var(--crm-muted);
+}
+.brandIcon {
+  border: 1px solid var(--crm-line);
+  border-radius: 6px;
+  background: var(--crm-panel);
+  padding: 7px;
+  display: flex;
+}
+.sidebar nav {
+  padding: 0 10px 15px;
+}
+.sidebar button,
+.sidebar a {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 7px 10px;
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--crm-muted);
+  text-decoration: none;
+}
+.sidebar button span:last-child {
+  margin-left: auto;
+  font-size: 10px;
+}
+.sidebar button.navActive {
+  border-color: var(--crm-line);
+  background: var(--hover-bg);
+  color: var(--crm-text);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text) 4%, transparent);
+}
+.sideGroup {
+  padding: 15px 10px;
+  border-top: 1px solid var(--crm-line);
+}
+.sideGroup h2 {
+  color: var(--crm-muted);
+  font-size: 10px;
+  font-weight: 500;
+  margin: 0 10px 7px;
+}
+.sideGroup button[aria-pressed="true"] {
+  color: var(--crm-text);
+  background: var(--crm-panel);
+}
+.sideGroup a:hover {
+  color: var(--crm-text);
+}
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--crm-success);
+  margin: 0 5px;
+}
+.dot[data-tone="1"] {
+  background: var(--crm-accent);
+}
+.dot[data-tone="2"] {
+  background: var(--crm-warning);
+}
+.dot[data-tone="3"] {
+  background: var(--text-soft);
+}
+.sideFoot {
+  margin-top: auto;
+  border-top: 1px solid var(--crm-line);
+  padding: 18px 15px;
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  font-size: 11px;
+}
+.liveDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--crm-success);
+}
+.main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 22px 15px;
+  gap: 12px;
+}
+.header > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.header h1 {
+  font-size: 16px;
+  font-weight: 550;
+  margin: 0;
+  letter-spacing: -0.3px;
+}
+.badge {
+  background: color-mix(in srgb, var(--crm-success) 12%, var(--panel));
+  border: 1px solid color-mix(in srgb, var(--crm-success) 30%, var(--border));
+  color: var(--crm-success);
+  padding: 0 7px;
+  border-radius: 10px;
+  font-size: 10px;
+}
+.crm button.primary,
+.drawer button.primary {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  background: var(--crm-accent-bg);
+  border-color: var(--crm-accent);
+  color: var(--crm-accent-text);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--panel) 20%, transparent);
+  white-space: nowrap;
+}
+.crm button.primary:hover,
+.drawer button.primary:hover {
+  background: color-mix(in srgb, var(--accent) 22%, var(--panel));
+}
+.tabs {
+  display: flex;
+  gap: 20px;
+  padding: 0 22px;
+  border-bottom: 1px solid var(--crm-line);
+}
+.tabs button {
+  color: var(--crm-muted);
+  border: 0;
+  background: transparent;
+  padding: 10px 0 11px;
+  border-radius: 0;
+  border-bottom: 1px solid transparent;
+  font-size: 11px;
+}
+.tabs button.tabActive {
+  color: var(--crm-text);
+  border-bottom-color: var(--crm-text);
+}
+.demoBanner {
+  padding: 8px 22px;
+  border-bottom: 1px solid var(--crm-line);
+  background: var(--crm-accent-bg);
+  color: var(--crm-accent-text);
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.demoBanner button {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: transparent;
+  border: 0;
+  color: var(--crm-accent-text);
+  padding: 0;
+  font-size: 10px;
+}
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 13px 16px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--crm-line);
+}
+.toolbar select,
+.toolbar > button {
+  border-radius: 20px;
+  font-size: 10px;
+  padding: 6px 9px;
+}
+.search {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--crm-muted);
+  flex: 1;
+  min-width: 145px;
+  max-width: 240px;
+}
+.search input {
+  min-width: 0;
+  width: 100%;
+  background: transparent;
+  border: 0;
+  padding: 6px 0;
+  font-size: 11px;
+  outline-offset: 0;
+}
+.toolbar .export {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+}
+.tableWrap {
+  overflow-x: auto;
+  flex: 1;
+}
+.table {
+  border-collapse: collapse;
+  width: 100%;
+  text-align: left;
+  white-space: nowrap;
+  font-size: 11px;
+}
+.table th {
+  font-size: 10px;
+  color: var(--crm-muted);
+  font-weight: 400;
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--crm-line);
+}
+.table td {
+  padding: 12px;
+  border-bottom: 1px solid var(--crm-line);
+  height: 50px;
+}
+.table tbody tr:hover {
+  background: var(--hover-bg);
+}
+.table tr.selected {
+  background: var(--hover-bg);
+}
+.table .checkbox {
+  width: 34px;
+  padding-left: 15px;
+  padding-right: 4px;
+}
+.checkbox input {
+  width: 12px;
+  height: 12px;
+  accent-color: var(--crm-accent);
+  cursor: pointer;
+}
+.table .numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.crm .nameButton,
+.crm .textButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  border: 0;
+  background: none;
+  padding: 0;
+  white-space: nowrap;
+  text-align: left;
+}
+.crm .nameButton:hover {
+  background: none;
+  color: var(--crm-accent-text);
+}
+.avatar {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  font-size: 9px;
+  color: var(--crm-accent-text);
+  background: var(--crm-accent-bg);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border));
+}
+.avatar[data-tone="1"] {
+  background: color-mix(in srgb, var(--crm-success) 12%, var(--panel));
+  color: var(--crm-success);
+  border-color: color-mix(in srgb, var(--crm-success) 30%, var(--border));
+}
+.avatar[data-tone="2"] {
+  background: color-mix(in srgb, var(--crm-warning) 12%, var(--panel));
+  color: var(--crm-warning);
+  border-color: color-mix(in srgb, var(--crm-warning) 30%, var(--border));
+}
+.avatar[data-tone="3"] {
+  background: var(--crm-accent-bg);
+  color: var(--crm-accent-text);
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
+}
+.tags {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.tag {
+  display: inline-block;
+  border-radius: 12px;
+  background: var(--crm-panel);
+  border: 1px solid var(--crm-line);
+  padding: 0 6px;
+  font-size: 10px;
+  color: var(--crm-muted);
+}
+.tag[data-tone="Active"] {
+  background: color-mix(in srgb, var(--crm-success) 12%, var(--panel));
+  border-color: color-mix(in srgb, var(--crm-success) 30%, var(--border));
+  color: var(--crm-success);
+}
+.tag[data-tone="Prospect"],
+.tag[data-tone="strategy"] {
+  background: var(--crm-accent-bg);
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
+  color: var(--crm-accent-text);
+}
+.tag[data-tone="Onboarding"] {
+  background: color-mix(in srgb, var(--crm-warning) 12%, var(--panel));
+  border-color: color-mix(in srgb, var(--crm-warning) 30%, var(--border));
+  color: var(--crm-warning);
+}
+.more {
+  color: var(--crm-muted);
+  background: var(--crm-panel);
+  border-radius: 10px;
+  padding: 0 4px;
+  font-size: 10px;
+}
+.risk {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10px;
+  color: var(--crm-muted);
+}
+.riskBars {
+  display: flex;
+  gap: 2px;
+}
+.riskBars i {
+  display: block;
+  width: 3px;
+  height: 13px;
+  background: var(--crm-line);
+  border-radius: 1px;
+}
+.riskBars i[data-filled="true"] {
+  background: var(--crm-success);
+}
+.riskBars i[data-filled="true"][data-level="2"] {
+  background: var(--crm-warning);
+}
+.riskBars i[data-filled="true"][data-level="3"] {
+  background: var(--crm-danger);
+}
+.date,
+.due {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  font-size: 10px;
+}
+.date svg,
+.due svg {
+  width: 12px;
+}
+.due {
+  color: var(--crm-warning);
+}
+.muted {
+  color: var(--crm-muted);
+}
+.crm .rowButton {
+  border: 0;
+  background: none;
+  color: var(--crm-muted);
+  padding: 3px;
+  display: flex;
+}
+.tableFoot {
+  display: flex;
+  align-items: center;
+  border-top: 1px solid var(--crm-line);
+  font-size: 10px;
+  color: var(--crm-muted);
+}
+.tableFoot > span {
+  padding: 12px 18px;
+  border-right: 1px solid var(--crm-line);
+}
+.tableFoot > span:last-child {
+  margin-left: auto;
+  border-right: 0;
+}
+.tableFoot strong {
+  color: var(--crm-text);
+  font-weight: 500;
+  margin-left: 7px;
+  font-variant-numeric: tabular-nums;
+}
+.bottomNote {
+  padding: 10px 18px;
+  font-size: 10px;
+  color: var(--crm-muted);
+  border-top: 1px solid var(--crm-line);
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.bottomNote [role="status"] {
+  color: var(--crm-accent-text);
+}
+.holdings {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* The terminal shell styles every table by ID. Keep the CRM's theme-aware
+   palette and readable type local, without changing other terminal tables. */
+:global(html[data-layout="terminal"] #content) .crm .table {
+  font-size: 12px;
+}
+:global(html[data-layout="terminal"] #content) .crm .table :is(th, td) {
+  padding: 12px;
+}
+:global(html[data-layout="terminal"] #content) .crm .table td {
+  font-size: 12px;
+  border-bottom: 1px solid var(--crm-line);
+}
+:global(html[data-layout="terminal"] #content) .crm .table thead th {
+  background: var(--crm-panel);
+  color: var(--crm-muted);
+  font-size: 10px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+:global(html[data-layout="terminal"] #content)
+  .crm
+  .table
+  tbody
+  tr:nth-child(even) {
+  background: color-mix(in srgb, var(--panel) 97%, var(--text));
+}
+:global(html[data-layout="terminal"] #content) .crm .table tbody tr:hover,
+:global(html[data-layout="terminal"] #content) .crm .table tbody tr.selected {
+  background: var(--hover-bg);
+}
+:global(html[data-layout="terminal"] #content) .crm .table .checkbox {
+  padding-left: 15px;
+  padding-right: 4px;
+}
+:global(html[data-layout="terminal"] #content) .crm .sideGroup h2 {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 11px;
+}
+.empty {
+  padding: 70px 20px;
+  text-align: center;
+  color: var(--crm-muted);
+}
+.empty > svg {
+  margin: 0 auto 10px;
+}
+.empty h2 {
+  color: var(--crm-text);
+  font-size: 16px;
+  font-weight: 500;
+}
+.empty p {
+  font-size: 12px;
+  margin: 10px 0 20px;
+}
+.loading {
+  padding: 50px;
+  color: var(--crm-muted);
+}
+.error {
+  color: var(--crm-danger);
+  background: color-mix(in srgb, var(--crm-danger) 12%, var(--panel));
+  padding: 12px 18px;
+  font-size: 12px;
+}
+.drawer {
+  position: fixed;
+  inset: 0 0 0 auto;
+  margin: 0;
+  width: min(620px, 100vw);
+  height: 100dvh;
+  max-height: 100dvh;
+  max-width: 100vw;
+  padding: 0;
+  border: 0;
+  border-left: 1px solid var(--crm-line);
+  background: var(--crm-bg);
+  color: var(--crm-text);
+  font:
+    12px/1.5 var(--font-sans),
+    sans-serif;
+  box-shadow: -15px 0 60px #0005;
+}
+.drawer::backdrop {
+  background: #0008;
+}
+.drawer form {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.drawerHead {
+  padding: 22px 26px;
+  border-bottom: 1px solid var(--crm-line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.drawerHead small {
+  color: var(--crm-accent-text);
+  font-size: 11px;
+}
+.drawerHead h2 {
+  font-size: 20px;
+  font-weight: 500;
+  margin: 3px 0 0;
+}
+.drawerHead button {
+  display: flex;
+  padding: 5px;
+}
+.editorFields {
+  padding: 24px 26px;
+  border: 0;
+  margin: 0;
+  min-width: 0;
+}
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+.formGrid label,
+.notes {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--crm-muted);
+  font-size: 11px;
+}
+.formGrid input,
+.formGrid select,
+.formGrid textarea,
+.notes textarea {
+  width: 100%;
+  padding: 9px 10px;
+  border-radius: 5px;
+  background: var(--crm-panel);
+  color: var(--crm-text);
+  min-width: 0;
+}
+.formGrid textarea,
+.notes textarea {
+  resize: vertical;
+}
+.full {
+  grid-column: 1 / -1;
+}
+.sectionHead {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  margin: 26px 0 14px;
+  border-top: 1px solid var(--crm-line);
+  padding-top: 21px;
+}
+.sectionHead h3 {
+  font-weight: 500;
+  font-size: 13px;
+  margin: 0;
+}
+.sectionHead h3 span {
+  color: var(--crm-muted);
+  margin-left: 6px;
+}
+.sectionHead button {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+}
+.formHint {
+  font-size: 11px;
+  color: var(--crm-muted);
+}
+.portfolioForm {
+  border: 1px solid var(--crm-line);
+  padding: 15px;
+  margin-bottom: 12px;
+  border-radius: 7px;
+}
+.portfolioHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 13px;
+}
+.portfolioHead strong {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--crm-accent-text);
+}
+.portfolioHead button {
+  border: 0;
+  background: none;
+  font-size: 10px;
+  padding: 0;
+  color: var(--crm-danger);
+}
+.notes {
+  margin-top: 22px;
+}
+.drawerFoot {
+  position: sticky;
+  bottom: 0;
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 26px;
+  border-top: 1px solid var(--crm-line);
+  background: var(--crm-bg);
+}
+.drawerFoot > span {
+  flex: 1;
+}
+.drawer .deleteButton {
+  background: transparent;
+  border: 0;
+  color: var(--crm-danger);
+  padding-left: 0;
+}
+.deleteConfirm {
+  margin: 0 26px 20px;
+  padding: 15px;
+  background: color-mix(in srgb, var(--crm-danger) 12%, var(--panel));
+  border: 1px solid color-mix(in srgb, var(--crm-danger) 30%, var(--border));
+  border-radius: 6px;
+}
+.deleteConfirm p {
+  margin: 0 0 10px;
+}
+.deleteConfirm button + button {
+  margin-left: 8px;
+}
+@media (min-width: 1600px) {
+  .table td {
+    padding-top: 14px;
+    padding-bottom: 14px;
+  }
+}
+@media (max-width: 1100px) {
+  .sidebar {
+    width: 165px;
+    flex-basis: 165px;
+  }
+  .crm {
+    margin: 10px;
+  }
+  .table td {
+    padding: 10px;
+  }
+}
+@media (max-width: 760px) {
+  .crm {
+    display: block;
+    margin: 8px;
+    min-height: calc(100dvh - 110px);
+  }
+  .sidebar {
+    width: 100%;
+    border-right: 0;
+    border-bottom: 1px solid var(--crm-line);
+  }
+  .brand {
+    padding: 12px 15px;
+  }
+  .sidebar nav,
+  .sideGroup,
+  .sideFoot {
+    display: none;
+  }
+  .header {
+    padding: 16px;
+  }
+  .tabs {
+    padding: 0 16px;
+    gap: 22px;
+  }
+  .demoBanner {
+    padding: 9px 16px;
+    flex-wrap: wrap;
+  }
+  .toolbar {
+    padding: 12px;
+    gap: 8px;
+  }
+  .search {
+    max-width: none;
+    flex-basis: 100%;
+  }
+  .tableWrap {
+    min-height: 360px;
+  }
+  .tableFoot {
+    flex-wrap: wrap;
+  }
+  .tableFoot > span {
+    padding: 10px;
+  }
+  .tableFoot > span:last-child {
+    margin-left: 0;
+  }
+  .formGrid {
+    gap: 12px;
+  }
+  .editorFields {
+    padding: 20px 16px;
+  }
+  .drawerHead,
+  .drawerFoot {
+    padding: 16px;
+  }
+}
+@media (max-width: 400px) {
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+  .sectionHead {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+}

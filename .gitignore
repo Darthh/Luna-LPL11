@@ -1,0 +1,75 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+/.firecrawl/
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+!.env.local.example
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# impeccable - config.json is shared, the rest is per-machine
+.impeccable/*
+!.impeccable/config.json
+.open-next
+migrations-data
+prisma/.shadow.db
+.dev.vars
+lib/generated
+.wrangler
+.playwright-mcp/
+
+# Not part of the site. Themes/ is a separate application (Odysseus UI) that
+# nothing here imports, and the rest is document work that happened to be done
+# in this directory - none of it is built, served or deployed.
+/Themes/
+/.resume-work/
+/output/
+/*.docx
+
+# sst - local state, generated types, and the Pulumi passphrase/workspace. The
+# deployed state itself lives in an S3 bucket in the AWS account, not here.
+.sst/
+
+# A verbatim transcript of the sessions that built this site. Not used by any
+# code, and it contains pasted API keys - so it stays out of the repo.
+PROMPTS.md
+
+/desktop/dist/
+/public/downloads/
+
+/desktop/node_modules/
