@@ -243,6 +243,16 @@ const CompareLinesIcon = svg(
 
 export const NAV_LINKS = [
   {
+    label: "Advisor Tools",
+    icon: BriefcaseIcon,
+    items: [
+      { href: "/finance-crm", label: "Finance CRM", icon: BriefcaseIcon },
+      { href: "/client-portfolios", label: "Client Portfolios", icon: BriefcaseIcon },
+      { href: "/model-portfolios", label: "Model Portfolios", icon: PieIcon },
+      { href: "/reports", label: "Reports", icon: ReportIcon },
+    ],
+  },
+  {
     label: "Graphs",
     icon: DashboardIcon,
     items: [
@@ -282,16 +292,6 @@ export const NAV_LINKS = [
       { href: "/us-sectors", label: "US Sectors", icon: SectorIcon },
       { href: "/currencies", label: "Major Currencies", icon: CurrencyIcon },
       { href: "/global-yields", label: "Global Yields", icon: YieldIcon },
-    ],
-  },
-  {
-    label: "Advisor Tools",
-    icon: BriefcaseIcon,
-    items: [
-      { href: "/finance-crm", label: "Finance CRM", icon: BriefcaseIcon },
-      { href: "/client-portfolios", label: "Client Portfolios", icon: BriefcaseIcon },
-      { href: "/model-portfolios", label: "Model Portfolios", icon: PieIcon },
-      { href: "/reports", label: "Reports", icon: ReportIcon },
     ],
   },
   { href: "/hedge-funds", label: "Hedgefund 13F's", icon: FilingIcon, widget: "hedgeFunds" },
