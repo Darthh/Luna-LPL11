@@ -1,3 +1,11 @@
+# Commit and push workflow
+
+For this project, after every prompt that changes project files, verify the
+requested work, commit only the task's changes, and push to `main` in
+`Darthh/Luna-LPL11` (`https://github.com/Darthh/Luna-LPL11.git`). Keep secrets
+and unrelated user changes out of commits. Report any push failure. Prompts
+that make no file changes do not require an empty commit.
+
 <!-- BEGIN:nextjs-agent-rules -->
 
 # This is NOT the Next.js you know
