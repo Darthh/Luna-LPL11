@@ -8,15 +8,12 @@ import LunaAILogo from "@/components/LunaAILogo";
 import { canUseOllama, ollamaModels, ollamaChat } from "@/lib/ollamaClient.mjs";
 import { readChats, saveChat } from "@/lib/chatHistory";
 import { STOCK_RANGES, buildStockCard, chartGeometry, stockLookupForMessage } from "@/lib/chatStockCard.mjs";
+import { HOSTED_MODELS } from "@/lib/hostedModels.mjs";
 
 const SUGGESTIONS = [
   ["Read the market", "What is market sentiment today?"],
   ["Research a stock", "Compare NVDA and SPY over the last year."],
   ["Find a Luna tool", "Where can I review Berkshire Hathaway's holdings?"],
-];
-
-const HOSTED_MODELS = [
-  { id: "luna-finance", label: "Luna Finance", detail: "Live market tools" },
 ];
 
 const LOCAL_KEY = "lunaLocalModel";

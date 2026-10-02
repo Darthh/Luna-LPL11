@@ -15,8 +15,13 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.116.0",
     "@auth/prisma-adapter": "^2.11.2",
+    "@aws-crypto/sha256-js": "^5.2.0",
+    "@aws-sdk/client-bedrock-runtime": "^3.1146.0",
+    "@aws-sdk/credential-providers": "^3.1146.0",
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.8.0",
+    "@smithy/protocol-http": "^5.6.2",
+    "@smithy/signature-v4": "^5.7.4",
     "bcryptjs": "^3.0.3",
     "chart.js": "^4.5.1",
     "leaflet": "^1.9.4",
@@ -27,9 +32,11 @@
     "react-dom": "19.2.4"
   },
   "devDependencies": {
+    "@opennextjs/aws": "^4.1.7",
     "eslint": "^9",
     "eslint-config-next": "^16.3.4",
     "postgres": "^3.4.9",
-    "prisma": "^7.8.0"
+    "prisma": "^7.8.0",
+    "sst": "^4.17.1"
   }
 }
