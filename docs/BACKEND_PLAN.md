@@ -1,6 +1,6 @@
 # Luna Terminal — Backend & AWS Plan
 
-Status: **proposal** · Branch: `backend-aws-plan` · Last updated: 2026-10-02
+Status: **in progress** (Phase 0 done, Phase 1 backend done) · Branch: `backend-aws-plan` · Last updated: 2026-10-02
 
 This document is the working plan for turning Luna's backend into something
 that runs properly on AWS, persists user data (starting with AI chat
@@ -140,7 +140,7 @@ backend can change storage without the UI noticing.
 - Both hosted (Luna Finance) and Ollama chats are saved the same way — the
   **client** persists, because Ollama answers never touch our server.
 
-### 4.2 Client module (front-end owner)
+### 4.2 Client module (front-end owner) — ⏳ not started, owner: chat FE
 
 `lib/chatStore.js` — async version of today's `lib/chatHistory.js` API, so
 `AIWorkspace.jsx` / `TerminalNav.jsx` change minimally:
@@ -148,7 +148,7 @@ backend can change storage without the UI noticing.
 ```js
 listChats({ cursor, q })        // -> { chats: [{ id, title, updatedAt, messageCount }], cursor }
 getChat(id)                     // -> { id, title, messages: [...] }
-appendMessages(id, messages)    // creates the chat on first call
+saveChat({ id, title, messages }) // POST full history; server keeps only new ones
 renameChat(id, title)
 deleteChat(id)
 importLocalChats()              // one-shot on sign-in
@@ -157,40 +157,66 @@ importLocalChats()              // one-shot on sign-in
 Internally: `session ? fetch('/api/chats/...') : localStorage`. Keep the
 `luna-chat-history` window event so the sidebar refreshes as today.
 
-### 4.3 HTTP API (backend owner)
+### 4.3 HTTP API (backend owner) — ✅ implemented
 
-All routes require a session; ownership is always checked against
-`session.user.id`, never a client-supplied user id.
+Code: `app/api/chats/**`, `lib/chatApi.js` (session, rate limit, errors),
+`lib/chats.mjs` (validation), `lib/chatRepository.mjs` (stores). Tests:
+`lib/chatRepository.test.mjs` runs one suite against both stores.
+
+All routes require a session; every key is scoped to `session.user.id`,
+never a client-supplied user id, so two users with the same chat id never
+collide.
 
 | Method & path | Body / query | Returns |
 |---|---|---|
-| `GET /api/chats` | `?cursor=&limit=20&q=` | `{ chats, cursor }` newest first |
-| `GET /api/chats/:id` | `?before=` (message cursor) | `{ id, title, createdAt, updatedAt, messages }` |
-| `POST /api/chats/:id/messages` | `{ title?, messages: [{ clientId, role, content, sources?, stockCard?, model? }] }` | `{ ok, messageCount }` — upsert chat, **idempotent on `clientId`** |
-| `PATCH /api/chats/:id` | `{ title?, pinned? }` | `{ ok }` |
-| `DELETE /api/chats/:id` | — | `204` |
-| `POST /api/chats/import` | `{ chats: [...] }` (≤30, same shape as localStorage) | `{ imported, skipped }` |
+| `GET /api/chats` | `?cursor=&limit=20&q=` (limit ≤ 50) | `{ chats: [{ id, title, createdAt, updatedAt, messageCount, pinned }], cursor }` newest first; `cursor: null` at the end |
+| `GET /api/chats/:id` | — | `{ id, title, createdAt, updatedAt, messageCount, pinned, messages }` or 404 |
+| `POST /api/chats/:id/messages` | `{ title?, from?, messages: [{ role, content, sources?, stockCard?, model? }] }` | `201` (created) / `200` `{ ok, messageCount, created }` |
+| `PATCH /api/chats/:id` | `{ title?, pinned? }` | `{ ok }` or 404 |
+| `DELETE /api/chats/:id` | — | `204` or 404 |
+| `POST /api/chats/import` | `{ chats: [...] }` — exactly what `lib/chatHistory.js` stores | `{ imported, unchanged, skipped }` |
 
-Rules: chat ids are client-generated (ULID/UUID — today's localStorage ids
-work as-is); `content` ≤ 32 KB per message; `sources` ≤ 10 entries;
-`role ∈ {user, assistant}`; rate-limited like other signed-in routes.
+**Saving is position-based and idempotent.** A message's identity is its
+index in the conversation. `from` is the index of `messages[0]` (default 0),
+so the simplest client just sends the **whole history** after every answer —
+exactly what `saveChat()` does today — and the server writes only the indexes
+it doesn't have. A retry or a double-send is harmless. If `from` is past
+what's saved, the answer is **409 `{ messageCount }`**: resend from there.
 
-### 4.4 Storage (DynamoDB, single table `LunaData`)
+Other answers: `400` validation (message names the field), `401` signed
+out, `404` unknown id *or another user's chat* (indistinguishable on
+purpose), `429` rate limited (`Retry-After`), `503` chat sync not
+configured — **the client should then keep using `localStorage`**.
+
+Limits: chat id `^[A-Za-z0-9_-]{6,64}$` (today's `Date.now()` ids and UUIDs
+both fit); `role ∈ {user, assistant}`; content ≤ 32 000 chars; ≤ 500
+messages per chat; ≤ 10 sources; `sources`/`stockCard` ≤ 16 000 chars of
+JSON; title ≤ 120 chars (defaults to the first user message, 60 chars).
+Unknown message fields (e.g. `error`) are dropped. Search matches the title
+and the user's own messages.
+
+Which store runs: `CHAT_TABLE` set → DynamoDB; otherwise in-memory in
+`next dev` (lost on restart; set `CHAT_STORE=memory` to force it), and
+**no store (503) in production** so nothing pretends to persist.
+
+### 4.4 Storage (DynamoDB, single table `LunaData`) — ✅ implemented
 
 | Item | PK | SK | Attributes |
 |---|---|---|---|
-| Chat meta | `USER#<userId>` | `CHAT#<chatId>` | `title, createdAt, updatedAt, messageCount, model, pinned` |
-| Message | `CHAT#<chatId>` | `MSG#<ts>#<clientId>` | `role, content, sources, stockCard, model, userId` |
-| GSI1 (list by recency) | `USER#<userId>` | `UPD#<updatedAt>#<chatId>` | projection: title, messageCount |
+| Chat summary | `USER#<userId>` | `CHAT#<chatId>` | `title, searchText, createdAt, updatedAt, messageCount, pinned` + `GSI1PK=USER#<userId>`, `GSI1SK=UPD#<updatedAt>#<chatId>` |
+| Message | `CHAT#<userId>#<chatId>` | `MSG#<000123>` | `index, role, content, sources, stockCard, model` |
 
-- A message read starts by fetching the chat meta under `USER#<sessionUser>`;
-  if it isn't there, it's a 404. That is the ownership check.
-- `DELETE` removes meta immediately and deletes messages in a background
-  batch (or via DynamoDB Streams → Lambda).
-- Messages over ~350 KB (shouldn't happen with the 32 KB cap) would spill to
-  S3 with a pointer.
-- Search v1: `q` filters titles + recent messages server-side for that user
-  (bounded scan of one partition). v2: Bedrock embeddings (see §7).
+Table needs `PK`/`SK` (strings) and a `GSI1` index on `GSI1PK`/`GSI1SK`
+with `ALL` projection (the SST definition in Phase 2 creates it).
+
+- Append writes each new message with a conditional put (never overwrites),
+  *then* advances `messageCount` with a conditional update that only grows.
+  A crash in between leaves extra messages that reads ignore, never a gap.
+  No transactions needed.
+- `DELETE` removes the summary first (the chat vanishes at once), then batch-
+  deletes its messages.
+- Search v1 filters summaries in code (≤ 500 read per search). v2: Bedrock
+  embeddings (see §7).
 
 **If the chat owner has already modelled chats in Prisma/Postgres**, that is
 acceptable — keep the API in §4.3 identical and note DSQL constraints:
@@ -344,21 +370,26 @@ tests), DynamoDB in AWS.
 Each phase ends with something deployable and demoable. Owners are
 placeholders — fill in.
 
-### Phase 0 — Foundations (½–1 day) · owner: _TBD_
-- [ ] Web CI workflow: `npm ci`, `eslint`, `node --test lib/*.test.mjs`,
-      offline `scripts/test-*.mjs`, `next build` on every PR.
-- [ ] Fix `test-fund-return`; tag network tests so CI skips them.
-- [ ] Add `npm test`; fix the 8 lint errors.
+### Phase 0 — Foundations (½–1 day) · ✅ done on `backend-aws-plan`
+- [x] Web CI workflow (`.github/workflows/web-ci.yml`): `npm ci`, lint,
+      `npm test`, `next build` on every PR and push to `main`.
+- [x] Fix `test-fund-return`; network tests skipped unless
+      `LUNA_NETWORK_TESTS=1`.
+- [x] `npm test` (`scripts/run-tests.mjs`); lint errors 8 → 0.
 - [ ] Remove stale Cloudflare/Worker comments; update `AGENTS.md` to match
       reality as it lands.
 
 ### Phase 1 — Chat contract & local backend (1–2 days) · owners: chat FE + backend
-- [ ] Agree §4 contract with the chat-history owner (this doc's PR is the
-      place to comment).
-- [ ] `lib/chatStore.js` (FE) + `/api/chats/*` routes (BE) behind a
-      `ChatRepository` interface with an in-memory/Postgres implementation
-      for local dev.
-- [ ] Unit tests for validation, ownership, idempotent append, import.
+- [ ] Agree §4 contract with the chat-history owner (comment on the PR for
+      this branch).
+- [x] `/api/chats/*` routes behind a repository with memory + DynamoDB
+      stores (BE).
+- [x] Tests for validation, ownership, idempotent append, gaps, search,
+      pagination, import — against both stores (DynamoDB via `dynalite`).
+- [ ] `lib/chatStore.js` + wire `AIWorkspace.jsx` / `TerminalNav.jsx`
+      (FE owner): call `POST /api/chats/:id/messages` where `saveChat()` is
+      called today, list from `GET /api/chats`, call `/api/chats/import` once
+      after sign-in, fall back to `localStorage` on 401/503.
 
 ### Phase 2 — AWS skeleton with SST (1–2 days) · owner: _TBD_
 - [ ] `sst.config.ts`: `Nextjs` site, `Dynamo` table `LunaData` (+GSI1,

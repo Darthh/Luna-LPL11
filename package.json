@@ -16,6 +16,8 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.116.0",
     "@auth/prisma-adapter": "^2.11.2",
+    "@aws-sdk/client-dynamodb": "^3.1146.0",
+    "@aws-sdk/lib-dynamodb": "^3.1146.0",
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.8.0",
     "bcryptjs": "^3.0.3",
@@ -28,6 +30,7 @@
     "react-dom": "19.2.4"
   },
   "devDependencies": {
+    "dynalite": "^4.0.0",
     "eslint": "^9",
     "eslint-config-next": "^16.3.4",
     "postgres": "^3.4.9",
