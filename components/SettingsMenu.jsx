@@ -4,8 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import ProfileSettings from "./ProfileSettings";
-import LanguageSelector from "./LanguageSelector";
-import { DENSITIES, FONT_OPTIONS, PATTERNS, THEME_GROUPS, WEIGHTS } from "@/lib/appearance";
+import { FONT_OPTIONS, PATTERNS, THEME_GROUPS, WEIGHTS } from "@/lib/appearance";
 
 function GearIcon() {
   return (
@@ -120,18 +119,11 @@ export default function SettingsMenu({ appearance, onAppearanceChange }) {
             onChange={(v) => onAppearanceChange("font", v)}
           />
           <AppearanceRow
-            label="Density"
-            value={appearance.density}
-            options={DENSITIES}
-            onChange={(v) => onAppearanceChange("density", v)}
-          />
-          <AppearanceRow
             label="Text weight"
             value={appearance.weight}
             options={WEIGHTS}
             onChange={(v) => onAppearanceChange("weight", v)}
           />
-          <LanguageSelector />
           {/* Alerts belong to an account, so the row only appears for one.
               It leaves the menu for a page rather than nesting a list inside
               a dropdown that is already several controls deep. */}

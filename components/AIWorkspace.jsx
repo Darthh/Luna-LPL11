@@ -5,16 +5,11 @@ import { useEffect, useRef, useState } from "react";
 import "./AIWorkspace.css";
 import { researchMessages } from "@/lib/chatResearch.mjs";
 import LunaAILogo from "@/components/LunaAILogo";
+import ChatSuggestions from "@/components/ChatSuggestions";
 import { ollamaModels, ollamaChat } from "@/lib/ollamaClient.mjs";
 import { readChats, saveChat } from "@/lib/chatHistory";
 import { STOCK_RANGES, buildStockCard, chartGeometry, stockLookupForMessage } from "@/lib/chatStockCard.mjs";
 import { HOSTED_MODELS } from "@/lib/hostedModels.mjs";
-
-const SUGGESTIONS = [
-  ["Read the market", "What is market sentiment today?"],
-  ["Research a stock", "Compare NVDA and SPY over the last year."],
-  ["Find a Luna tool", "Where can I review Berkshire Hathaway's holdings?"],
-];
 
 const LOCAL_KEY = "lunaLocalModel";
 const LOCAL_SECRET_KEY = "lunaLocalModelKey";
@@ -533,12 +528,10 @@ export default function AIWorkspace({ chatId = null }) {
         </form>
 
         {!messages.length && (
-          <div className="ai-suggestions">
-            <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" aria-hidden="true"><path d="m13 2-9 12h7l-1 8 10-13h-7l1-7Z"/></svg> Suggested</span>
-            {SUGGESTIONS.map(([title, prompt]) => (
-              <button key={title} type="button" onClick={() => send(prompt)}><strong>{title}</strong><small>{prompt}</small></button>
-            ))}
-          </div>
+          <ChatSuggestions onChoose={prompt => {
+            setInput(prompt);
+            document.querySelector('.ai-composer textarea')?.focus();
+          }} />
         )}
         {error && <p className="ai-error" role="alert">{error}</p>}
       </div>
