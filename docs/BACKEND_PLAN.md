@@ -1,6 +1,6 @@
 # Luna Terminal — Backend & AWS Plan
 
-Status: **in progress** (Phase 0 done, Phase 1 backend done) · Branch: `backend-aws-plan` · Last updated: 2026-10-02
+Status: **in progress** (Phases 0–2 done; Phase 1 front end pending) · Branch: `backend-aws-plan` · Last updated: 2026-10-02
 
 This document is the working plan for turning Luna's backend into something
 that runs properly on AWS, persists user data (starting with AI chat
@@ -391,12 +391,21 @@ placeholders — fill in.
       called today, list from `GET /api/chats`, call `/api/chats/import` once
       after sign-in, fall back to `localStorage` on 401/503.
 
-### Phase 2 — AWS skeleton with SST (1–2 days) · owner: _TBD_
-- [ ] `sst.config.ts`: `Nextjs` site, `Dynamo` table `LunaData` (+GSI1,
-      TTL, streams), data `Bucket`, `Secret`s, linked resources.
-- [ ] Per-developer stages (`sst dev`), `staging`, `production`.
-- [ ] GitHub Actions deploy via OIDC on merge to `main` (staging) and tags
-      (prod).
+### Phase 2 — AWS skeleton with SST (1–2 days) · ✅ done on `backend-aws-plan` (not yet deployed)
+- [x] `sst.config.ts` (SST v4): `Nextjs` site, `Dynamo` table `LunaData`
+      (+GSI1, TTL `expiresAt`, PITR/deletion protection in prod), `Bucket`
+      `LunaFiles`, `Dsql` cluster `LunaDb`, all linked; third-party keys as
+      `sst.Secret`s. How-to: `docs/DEPLOY.md`.
+- [x] `lib/prisma.js` connects to DSQL with per-connection IAM tokens when
+      `DSQL_ENDPOINT` is set; local dev keeps `DATABASE_URL`.
+- [x] Per-developer stages, `staging`, `production` (retained + protected).
+- [x] `.github/workflows/deploy.yml`: OIDC deploy (main → staging, `v*` tag →
+      production); skipped until `AWS_DEPLOY_ROLE_ARN` is set.
+- [x] Verified offline: config type-checks against SST's platform types;
+      OpenNext 3.9.14 packages the app; the packaged Lambda handler serves
+      `/api/chats` against a local DynamoDB (dynalite) with production
+      cookies.
+- [ ] First real `sst deploy` — needs an AWS account (see open questions).
 
 ### Phase 3 — Data on AWS (2–3 days)
 - [ ] DSQL cluster in SST; IAM-token `lib/prisma.js`; `scripts/dsql-migrate.mjs`;
