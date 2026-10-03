@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const GREETINGS = [
   "See the market in a new light.",
@@ -17,6 +17,26 @@ const STORAGE_KEY = "lunaChatGreeting";
 export default function ChatGreeting() {
   // Keep server output and the first client render identical.
   const [index, setIndex] = useState(0);
+  const greeting = useRef(null);
+
+  useEffect(() => {
+    const element = greeting.current;
+    const heading = element.parentElement;
+    const fit = () => {
+      const size = parseFloat(getComputedStyle(heading).fontSize);
+      element.style.fontSize = `${size}px`;
+      const available = heading.clientWidth;
+      if (available > 0 && element.scrollWidth > available) {
+        element.style.fontSize = `${size * available / element.scrollWidth * 0.98}px`;
+      }
+    };
+    const observer = new ResizeObserver(fit);
+    observer.observe(heading);
+    let active = true;
+    document.fonts.ready.then(() => { if (active) fit(); });
+    fit();
+    return () => { active = false; observer.disconnect(); };
+  }, [index]);
 
   useEffect(() => {
     let current = -1;
@@ -44,5 +64,5 @@ export default function ChatGreeting() {
     };
   }, []);
 
-  return <span key={index} className="ai-greeting">{GREETINGS[index]}</span>;
+  return <span key={index} ref={greeting} className="ai-greeting">{GREETINGS[index]}</span>;
 }
