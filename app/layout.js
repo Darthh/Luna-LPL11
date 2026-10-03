@@ -103,7 +103,7 @@ try{
 var t=localStorage.getItem(K.theme);
 /* The Luna palette shipped as "lpl" first. Without this line anyone who
    picked it then would silently land on the default instead. */
-if(t==='lpl'){t='luna';localStorage.setItem(K.theme,t);}
+if(t==='lpl'||t==='light'){t='luna';localStorage.setItem(K.theme,t);}
 if(T.indexOf(t)===-1)t=X.theme;d.dataset.theme=t;
 var p=localStorage.getItem(K.pattern);if(P.indexOf(p)===-1)p=TP[t]||'none';d.dataset.pattern=p;
 var f=localStorage.getItem(K.font);if(!F[f])f=X.font;d.style.setProperty('--font-ui',F[f]);
