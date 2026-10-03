@@ -56,13 +56,21 @@ The existing question rate limiter is per process, not a shared Lambda-wide
 quota. Before a public production launch, add a shared usage counter and
 account-level spending limits. The preview is for controlled testing.
 
-## Useful next additions
+## AgentCore research implementation
+
+The AgentCore runtime, private document search with S3 Vectors, Bedrock Data
+Automation extraction, durable research worker, and S3 Tables research archive
+are now defined in the project. See [AWS_AGENT_RESEARCH.md](AWS_AGENT_RESEARCH.md)
+for deployment, limits, and verification. Their live status must be verified
+against the actual deployment outputs.
+
+## Further additions
 
 1. Add read-only tools for ETF holdings, 13F filings, fundamentals, and supply
    chains using the existing library functions, with dates and source links.
-2. Index filings and research documents in S3 with a Bedrock Knowledge Base;
-   return document citations alongside live market data.
+2. Add automatic ingestion of public filings into the document pipeline and
+   historical holdings into a separate S3 Table.
 3. Use EventBridge for scheduled watchlist briefs, with model evaluations for
    factual grounding and CloudWatch measurements of latency and token cost.
 
-These additions are proposals, not resources provisioned by this preview.
+These further additions are proposals, not resources provisioned by this preview.

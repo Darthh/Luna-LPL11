@@ -11,6 +11,7 @@ function repair(dir) {
     else if (item.isFile() && /\.(js|json)$/.test(item.name)) {
       const before = readFileSync(path, "utf8");
       const after = before.replace(/@prisma\/client-[a-f0-9]+/g, "@prisma/client")
+        .replace(/(@aws-sdk\/[a-z0-9-]+)-[a-f0-9]{12,}/g, "$1")
         .replace(/\bpg-[a-f0-9]{12,}\b/g, "pg");
       if (after !== before) writeFileSync(path, after);
     }
