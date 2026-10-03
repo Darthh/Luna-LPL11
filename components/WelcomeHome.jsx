@@ -22,7 +22,7 @@ export default function WelcomeHome() {
             focused workspace. Free to use. Built for decisions.
           </p>
           <div className="intro-actions">
-            <Link href="/dashboard" className="intro-primary">
+            <Link href="/dashboard/chat" className="intro-primary">
               <span>Open Luna Terminal</span><span aria-hidden="true">→</span>
             </Link>
             <a href="#platform" className="intro-text-link">Explore the platform</a>
@@ -125,7 +125,7 @@ export default function WelcomeHome() {
           className="intro-wordmark"
         />
         <h2 id="close-title">The market is already moving.</h2>
-        <Link href="/dashboard" className="intro-primary"><span>Open the terminal</span><span aria-hidden="true">→</span></Link>
+        <Link href="/dashboard/chat" className="intro-primary"><span>Open the terminal</span><span aria-hidden="true">→</span></Link>
       </section>
 
       <section className="intro-downloads" id="desktop-downloads" aria-labelledby="desktop-downloads-title">
