@@ -33,7 +33,9 @@ export default $config({
     };
   },
   async run() {
-    const sst = await import("./.sst/platform/src/components/index.js");
+    // `sst`, `aws` and `$util` are globals SST provides here. Importing them
+    // from .sst/platform by path broke a fresh checkout: that folder is only
+    // created by `sst install`, which itself has to read this file first.
     const production = $app.stage === "production";
 
     // ---- secrets -----------------------------------------------------------
@@ -112,7 +114,6 @@ export default $config({
       ...(process.env.BEDROCK_PROMPT_CACHE === "true" ? { BEDROCK_PROMPT_CACHE: "true" } : {}),
     };
     if (process.env.LUNA_GUARDRAIL === "true") {
-      const aws = await import("./.sst/platform/node_modules/@pulumi/aws/index.js");
       const declined = "I can't give personal buy, sell or allocation advice. I can show the data - prices, history, sentiment, filings - so you can decide.";
       const guardrail = new aws.bedrock.Guardrail("AdviceGuardrail", {
         name: `luna-advice-${$app.stage}`,

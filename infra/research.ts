@@ -3,8 +3,10 @@
 // extraEnvironment: settings the agent runtime and worker share with the site
 // (guardrail, prompt caching), so every model call follows the same policy.
 export async function researchInfrastructure(sst: any, modelPermissions: any[], extraEnvironment: Record<string, any> = {}) {
-  const pulumi = await import("../.sst/platform/node_modules/@pulumi/pulumi/index.js");
-  const aws = await import("../.sst/platform/node_modules/@pulumi/aws/index.js");
+  // SST's globals (`aws`, and `$util` for the Pulumi SDK) rather than paths
+  // into .sst/platform, which doesn't exist on a fresh checkout until
+  // `sst install` - and that has to read this file first.
+  const pulumi = $util;
   const { readFileSync } = await import("node:fs");
   const { createHash } = await import("node:crypto");
   const { resolve } = await import("node:path");
@@ -13,6 +15,7 @@ export async function researchInfrastructure(sst: any, modelPermissions: any[], 
   const region = "us-east-1";
   const prefix = `luna-research-${$app.stage}-${account.accountId}`;
   const existingCatalog = spawnSync("aws", ["glue", "get-catalog", "--region", region, "--catalog-id", `${account.accountId}:s3tablescatalog`], { encoding: "utf8" });
+  if (existingCatalog.error) throw new Error("Deploying needs the AWS CLI on PATH (it checks the S3 Tables catalog). Install it from https://aws.amazon.com/cli/, then sign in so `aws sts get-caller-identity` works.");
   if (existingCatalog.status !== 0 && !existingCatalog.stderr.includes("EntityNotFoundException")) throw new Error("Cannot verify S3 Tables catalog: " + existingCatalog.stderr);
   const catalogStackName = `${prefix}-catalog`;
   const managedCatalog = spawnSync("aws", ["cloudformation", "describe-stacks", "--region", region, "--stack-name", catalogStackName], { encoding: "utf8" });

@@ -22,6 +22,31 @@ it creates nothing beyond the site, which suits a workshop account with
 restrictive policies. Every resource is reached through the Lambda's IAM role,
 so there is no database password, no AI key and no AWS key in the deployment.
 
+## 0. Before the first deploy (once per machine)
+
+1. **AWS CLI v2** on PATH (`aws --version`). The deploy runs it to check the
+   S3 Tables catalog. Download: https://aws.amazon.com/cli/
+2. **Credentials** in the same terminal. `aws sts get-caller-identity` must
+   print your account. In Windows PowerShell, either:
+   - workshop / temporary credentials: paste the **PowerShell** block from
+     the console's "AWS CLI credentials" panel:
+     ```powershell
+     $Env:AWS_ACCESS_KEY_ID="..."; $Env:AWS_SECRET_ACCESS_KEY="..."; $Env:AWS_SESSION_TOKEN="..."
+     $Env:AWS_REGION="us-east-1"
+     ```
+   - IAM Identity Center (SSO): `aws configure sso`, then
+     `aws sso login --profile luna` and `$Env:AWS_PROFILE="luna"`.
+   Temporary credentials expire. Re-paste them when `check:bedrock` reports
+   `credentials`.
+3. **The `AuthSecret`** for the stage, set once per account (skip it if a
+   teammate already deployed this stage):
+   ```powershell
+   npx sst secret set AuthSecret ([Convert]::ToBase64String((1..32 | ForEach-Object { Get-Random -Maximum 256 }))) --stage agents
+   ```
+4. In PowerShell, `<url>` in these docs is a placeholder: type the real
+   address, e.g. `npm run smoke:site https://d1abc2def3.cloudfront.net`.
+   `<` and `>` are special characters there.
+
 ## 1. Deploy
 
 You need AWS credentials for the target account (`aws sts get-caller-identity`
