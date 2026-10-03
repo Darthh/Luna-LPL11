@@ -1,0 +1,30 @@
+.market-movers-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+}
+
+.market-movers-card .mover-row-with-logo {
+  grid-template-columns: 28px minmax(0, 1fr) auto auto;
+  align-items: center;
+  row-gap: 2px;
+  padding-block: 8px;
+}
+
+.market-movers-card .mover-logo {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  border-radius: 6px;
+}
+
+.market-movers-card .mover-name {
+  grid-column: 2 / -1;
+}
+
+.trail-flyout-body .market-movers-card {
+  padding: 10px;
+}

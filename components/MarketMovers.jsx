@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useLanguage } from "./LanguageProvider";
 import { MoverList } from "./MoverRows";
+import "./MarketMovers.css";
 
 const INDEXES = [
   { symbol: "SPY", label: "S&P 500" },
@@ -40,7 +41,7 @@ export default function MarketMovers() {
   }, [index]);
 
   return (
-    <div className="mover-groups">
+    <div className="mover-groups market-movers-card">
       <div className="mover-tabs" role="tablist">
         {INDEXES.map(({ symbol, label }) => (
           <button
@@ -68,9 +69,9 @@ export default function MarketMovers() {
       {data && (
         <>
           <h3 className="mover-head up">{t("Gainers")}</h3>
-          <MoverList rows={data.gainers ?? []} empty={t("No data")} />
+          <MoverList rows={data.gainers ?? []} empty={t("No data")} showLogos />
           <h3 className="mover-head down">{t("Losers")}</h3>
-          <MoverList rows={data.losers ?? []} empty={t("No data")} />
+          <MoverList rows={data.losers ?? []} empty={t("No data")} showLogos />
         </>
       )}
     </div>
