@@ -250,6 +250,7 @@ export const NAV_LINKS = [
       { href: "/client-portfolios", label: "Client Portfolios", icon: BriefcaseIcon },
       { href: "/model-portfolios", label: "Model Portfolios", icon: PieIcon },
       { href: "/reports", label: "Reports", icon: ReportIcon },
+      { href: "/hedge-funds", label: "13F Filings", icon: FilingIcon, widget: "hedgeFunds" },
     ],
   },
   {
@@ -294,7 +295,6 @@ export const NAV_LINKS = [
       { href: "/global-yields", label: "Global Yields", icon: YieldIcon },
     ],
   },
-  { href: "/hedge-funds", label: "Hedgefund 13F's", icon: FilingIcon, widget: "hedgeFunds" },
   { href: "/watchlist", label: "Create watchlist", icon: WatchlistIcon, widget: "watchlist" },
 ];
 
