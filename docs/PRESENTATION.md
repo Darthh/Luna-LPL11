@@ -101,14 +101,55 @@ While the AWS part plays, or right after it, say the AWS "why" (30 s):
   32,000 advisors. Thank you, we'd love your questions."**
 
 ### Likely questions
+
+Keep answers to two or three sentences, then stop. "We haven't built that
+yet; here's how we would" is a fine answer. Never claim something the demo
+didn't show.
+
+**The question to agree on as a team first**
+
 | Question | Answer |
 |---|---|
-| Is this real client data? | No. The Harper family is fictional (it says so on every page); prices are public market quotes. |
-| How do you stop it giving advice? | The agent is instructed to inform, not advise: it gives the case each way. A Bedrock Guardrail that blocks personal buy/sell advice is built in behind a switch. |
-| What if a model is down or wrong? | It retries, then a backup model answers and says so. Every number comes from a tool call with a date, and an answer with no data behind it is withheld. |
-| Why 5 models? | Different speed, cost and quality trade-offs. The same tools work with any of them, so the firm can choose per task, or switch if one is unavailable. |
-| How much does it cost to run? | It's serverless and scales to zero, so you pay per request. CloudWatch shows tokens per model call, which is the main cost. |
-| Could LPL deploy it? | It's infrastructure as code (SST): one command deploys it into an AWS account, with IAM roles and no stored keys. |
+| What did you build during the hackathon? | Be exact and honest. The rubric scores only what you built during the event. The market terminal (charts, screener, maps, 13F pages) came into the repo on day 1. The hackathon work is the AWS agent layer: Bedrock models, the AgentCore agent, document upload and search, background reports, accounts and chat history on DSQL/DynamoDB, failover and metrics, the deploy, and the MCP endpoint. **Confirm the split with Patrick before presenting.** |
+
+**AWS judges ("right service, right reason", security, reliability, cost)**
+
+| Question | Answer |
+|---|---|
+| Why AgentCore instead of running the agent in Lambda? | The agent makes several model and tool calls per question. AgentCore is a managed runtime built for that: isolated sessions per user, long-running calls, and its own IAM role. The web Lambda only streams the result. |
+| Why S3 Vectors, not OpenSearch or a Knowledge Base? | Each advisor's documents are a small, private collection. S3 Vectors has no cluster to run and costs almost nothing at rest, and every query filters by owner. A Knowledge Base would also work; we wanted direct control of owner filtering and citations. |
+| Why Aurora DSQL, not RDS? | Serverless with nothing to manage, IAM authentication (no password anywhere), no VPC. The trade-off: DSQL has no foreign keys, so the app enforces relations itself and we wrote a migration runner that follows DSQL's rules. |
+| Why DynamoDB as well? | Chat history and rate limits are simple key lookups with high write volume. DynamoDB gives atomic counters, so every Lambda shares one rate limit, and TTL deletes old data automatically. |
+| Why 5 models? Isn't that "filling a list"? | One default (GPT-5.6 Sol). The others are a backup if a model fails, and let the firm choose speed vs. cost vs. quality per task with the same tools. Honest limit: it doesn't yet pick the cheapest model automatically. |
+| How is it secured? | No API keys for AI or the database: the IAM role can call exactly five models. Buckets are private. Every document query is checked against its owner. Passwords are hashed with bcrypt. Rate limits sit on the paid routes. |
+| What happens when something fails? | The model call is retried once, then a backup model answers and says so. Errors are classified (credentials, access, throttling) and logged. An answer that didn't fetch data first is withheld. |
+| What does it cost? | It's serverless, so idle costs almost nothing; you pay per request, mostly model tokens. CloudWatch records tokens per call, so cost per question can be measured. Give a figure only if you've calculated one. |
+| How does it scale? | Lambda and DynamoDB scale automatically. The limit is Bedrock quota: about 1 call per second in this workshop account, much higher in production. Rate limits and failover protect it. |
+| How did you deploy it? | Infrastructure as code with SST: one command builds the whole stack. GitHub Actions can deploy after CI passes, using OIDC (no stored AWS keys). |
+
+**LPL judges: business, compliance, risk**
+
+| Question | Answer |
+|---|---|
+| How do you stop hallucinated numbers? | Every price comes from a tool call and carries its date. Document answers cite the page and chunk. The model is told never to use numbers from memory, and an answer with no data behind it isn't shown. |
+| Isn't this giving investment advice? | It's research support for the advisor, not the client. It informs, it doesn't advise: on "should they sell" it gives both sides. A Bedrock Guardrail that blocks personal buy/sell advice is built in behind a switch. The advisor stays responsible for the recommendation. |
+| What about FINRA and recordkeeping? | Chats are saved per user, which is a start for supervision. A production version would add archiving to the firm's books-and-records system and compliance review. Don't claim compliance; say what you'd integrate. |
+| Is client data safe? Did you use real data? | The demo uses only a fictional family. Documents go to a private S3 bucket, and search is limited to their owner. In production it would run in LPL's own AWS account, and data wouldn't be used to train models: Bedrock doesn't train on customer data. |
+| Where does market data come from? Is it licensed? | Public market quotes for the prototype. The app already supports licensed providers (Finnhub, Polygon, Twelve Data, Tradier) through keys; production would use LPL's licensed feeds. |
+| How much time does it save? | The number you measured: "the four-page packet was summarized in N seconds." Anything per-advisor or firm-wide is an estimate, so call it one. |
+| How is this different from ChatGPT, or the tools LPL already has? | ChatGPT answers from memory and doesn't know today's prices or the client's file. Market terminals show data but don't read client documents. Luna combines both, cites everything and stays within the line on advice. |
+| Who pays, and how? | As an internal LPL tool: a per-advisor seat, or part of the advisor platform. As a startup: a per-advisor subscription for independent advisors and firms. |
+| How would advisors learn to use it? | It's a chat: they ask in plain English. Pages they need are linked from the answers. |
+
+**Technical-execution judges**
+
+| Question | Answer |
+|---|---|
+| How does the agent work? | It plans which tools to call (quotes, history, sentiment, document search, site pages), runs them in parallel, then writes the answer from the results, streaming to the screen. |
+| How do you know the answers are right? | Automated tests on every pull request. A smoke test asks all five models a live question and checks they fetched data. Honest gap: no formal accuracy evaluation set yet; that's next. |
+| What was hardest? | Pick a real story: workshop credentials expiring every ~15 minutes looked like a model bug until we classified the errors; DSQL's no-foreign-keys and one-DDL-per-transaction rules; making a fresh checkout deploy on Windows. |
+| What would you do with more time? | Turn the Guardrail on by default, fire alerts on a schedule (EventBridge), add an accuracy evaluation set, use licensed data feeds, and put AgentCore Gateway with sign-in in front of the MCP tools. |
+| What's the MCP endpoint? (if you show it) | The same read-only market tools, published in the Model Context Protocol so other AI agents, such as Claude Desktop, can use them. No user data is exposed. |
 
 ## Recording the demo
 
