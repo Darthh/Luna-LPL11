@@ -56,7 +56,77 @@ stack, and GitHub Actions can deploy over OIDC with no stored AWS keys.
 6. **Governed (optional).** A Bedrock Guardrail can decline personal buy/sell
    advice for every model (`LUNA_GUARDRAIL=true`).
 
-## 3-minute demo script
+## Live demo (about 4 minutes): "the meeting is tomorrow morning"
+
+Follows the deck's story (slide 2): an advisor must review a client's
+statements, find what matters and bring recommendations to a meeting, and
+time is running out. The client is the **Harper family**, a fictional packet in
+`docs/demo/harper-family-q3-2026-review.pdf` (4 pages: profile, investment
+report, studio income statement, household cash flow). It's planted with four
+findings for Luna to surface:
+
+- **Tech concentration:** NVDA, AAPL, MSFT and TSM are 52.7% of the
+  portfolio.
+- **Shared supply chain:** NVDA and TSM (28.5% together) depend on the same
+  chips.
+- **Shrinking margin:** the wife's studio grew revenue 10.6%, but net margin
+  fell from 11.5% to 7.7%.
+- **Tight liquidity:** $108k of renovation and tuition is due within 11
+  months, against $88k cash plus about $26k of savings. That only just covers
+  it, and if the studio's draw falls by a third the family is about $12k
+  short.
+
+Signed in, on `/dashboard/chat`, GPT-5.6 Sol (default model):
+
+| # | Time | Do | Say |
+|---|---|---|---|
+| 1 | 0:20 | Show the dashboard briefly, then open the chat | "Every number Luna gives is pulled live and dated. It never answers from memory." |
+| 2 | 0:40 | **Documents & research** → upload the Harper PDF (do it before the demo; see below) → select it → ask: *"Summarize this client packet: the key trends and what I should raise in the meeting."* | "This is the night-before review that used to take hours. The answer cites the page it came from." |
+| 3 | 0:40 | Ask: *"How have NVDA and TSM moved over the last year, and what are they at today?"* | Point at the live prices, dates and charts. "Live data, next to the client's own statement." |
+| 4 | 0:30 | Open `/supply-chain`, enter NVDA, and point at TSM ("fabricates Blackwell and Hopper GPUs") | "52.7% in tech, and the two biggest positions share one supply chain. That's the risk to raise." |
+| 5 | 0:30 | Ask: *"Can the Harpers cover the renovation and tuition if the studio's draw falls by a third?"* | "It works the cash-flow page: about $12k short. That's a planning conversation, found the night before." |
+| 6 | 0:20 | Ask: *"Should they sell their NVIDIA?"* | "Luna informs, it doesn't advise: it lays out the case each way and leaves the decision with the advisor. That's the compliance line." |
+| 7 | 0:20 | Switch the model to **Claude Opus 5 · AWS** and re-ask question 3 | "Five models on Amazon Bedrock, one set of tools: pick the model per question." |
+| 8 | 0:20 | Click **Research in background** on the packet, *"Prepare a one-page meeting brief for the Harpers"*, then move to the AWS slide while it runs | "Reports run as background jobs on AWS. The brief is ready when the meeting starts." |
+
+Then the AWS slide (below), and **CloudWatch → Metrics → LunaTerminal/AI**
+showing latency and tokens per model, if you have time.
+
+Optional (30 s), for technical judges: in Claude Desktop with the
+`/api/mcp` connector (docs/MCP.md), ask *"What's NVDA at, and where on Luna
+can I see its supply chain?"* "Any AI agent can use Luna's tools; it's the
+same tool code the AgentCore agent runs."
+
+### Prepare before presenting
+
+- Sign in on the demo browser. Upload the Harper PDF **before** the demo and
+  wait for **ready**: extraction runs as a background job, so don't leave it
+  to chance on stage. Then run questions 2-5 once, to check the answers and
+  warm up the Lambdas.
+- Keep a second tab with an answered chat as a fallback, and the backup
+  recording ready.
+- Zoom the browser to 125% so the room can read it.
+
+### The AWS slide (for the deck)
+
+**Title:** Built serverless on AWS
+
+- **Amazon Bedrock:** 5 models (GPT-5.6 Sol, Claude Opus 5, Llama 4, Qwen3,
+  Gemma 4), all with the same live-data tools. IAM-scoped, no API keys.
+- **Bedrock AgentCore:** runs the tool-using agent, with tools called in
+  parallel and answers streamed.
+- **S3 Vectors + Titan embeddings:** search the client's documents by
+  meaning, with cited pages.
+- **Lambda durable functions + Bedrock Data Automation:** PDF extraction
+  and background reports.
+- **Aurora DSQL + DynamoDB:** accounts, watchlists, chat history synced
+  across devices. Serverless, IAM auth, no passwords.
+- **CloudFront + Lambda, deployed with SST:** one command reproduces it;
+  CloudWatch tracks latency, tokens and errors per model.
+
+Footer line: *No servers to manage, no AI keys, least-privilege IAM.*
+
+### Alternative: quick feature tour (no documents, about 3 minutes)
 
 1. **Market context (30 s).** Open `/dashboard`: the sentiment gauge, movers
    and watchlist widgets.
