@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import ReportFlow from "@/components/ReportBuilder";
 import TickerInput from "@/components/TickerInput";
 import PortfolioWheel from "@/components/PortfolioWheel";
 import { holdingColors } from "@/lib/portfolioColors";
@@ -406,11 +407,15 @@ export default function AdvisorWorkspace({ kind }) {
         />
       )}
       {modal === "report" && (
-        <CreateReport
-          portfolios={rows}
-          disabled={working}
+        <ReportFlow
+          portfolios={rows.map(row => ({ ...row, kind: kind === "models" ? "model" : "client" }))}
+          preparedBy={session?.user?.name || ""}
           onClose={() => setModal(null)}
-          onCreate={(row) => upsert(row, "reports")}
+          onSave={async row => {
+            if (userId) await workspaceRequest("/api/advisor-items?kind=reports", row);
+            else save("reports", [{ ...row, id: crypto.randomUUID(), opened: new Date().toISOString() }, ...load("reports")]);
+            setModal(null);
+          }}
         />
       )}
     </div>
@@ -893,128 +898,6 @@ function PortfolioEditor({ row, performance, onClose, onSave, disabled }) {
         <div className="adv-wheel">
           <h3>Allocation</h3>
           <PortfolioWheel holdings={wheelHoldings} total={wheelTotal} />
-        </div>
-      )}
-    </Modal>
-  );
-}
-
-const today = () => new Date().toISOString().slice(0, 10);
-
-// Two steps: which portfolio and which report, then who it is for.
-function CreateReport({ portfolios, onClose, onCreate, disabled }) {
-  const [step, setStep] = useState(1);
-  const [form, setForm] = useState({
-    kind: "one-pager",
-    portfolioId: portfolios[0]?.id ?? "",
-    name: "One Pager Report",
-    client: "",
-    preparedBy: "",
-    start: "1999-03-10",
-    end: today(),
-  });
-  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
-
-  return (
-    <Modal
-      title="Create Report"
-      onClose={onClose}
-      footer={
-        <>
-          <span className="adv-step">Step {step} of 2</span>
-          <button
-            type="button"
-            className="adv-btn"
-            onClick={() => (step === 1 ? onClose() : setStep(1))}
-          >
-            Back
-          </button>
-          <button
-            type="button"
-            className="adv-btn primary"
-            disabled={disabled || (step === 2 && !form.name.trim())}
-            onClick={() => {
-              if (step === 1) return setStep(2);
-              const source = portfolios.find((p) => p.id === form.portfolioId);
-              onCreate({
-                name: form.name.trim(),
-                client: form.client,
-                preparedBy: form.preparedBy,
-                content: `${form.name.trim()}\nPrepared for: ${form.client || "Unspecified"}\nPrepared by: ${form.preparedBy || "Unspecified"}\nPeriod: ${form.start} to ${form.end}\nPortfolio: ${source?.name || "None selected"}`,
-                holdings: source?.holdings ?? [],
-              });
-            }}
-          >
-            Next
-          </button>
-        </>
-      }
-    >
-      {step === 1 ? (
-        <>
-          <p className="adv-lede">Choose a report to build.</p>
-          <div className="adv-cards">
-            {[
-              ["one-pager", "One Pager Report", "A single page: allocation, returns and holdings."],
-              ["performance", "Performance Report", "Returns against a benchmark over the period."],
-              ["holdings", "Holdings Report", "Every position with weight and cost basis."],
-            ].map(([id, label, blurb]) => (
-              <button
-                key={id}
-                type="button"
-                className={form.kind === id ? "adv-card active" : "adv-card"}
-                aria-pressed={form.kind === id}
-                onClick={() => setForm((f) => ({ ...f, kind: id, name: label }))}
-              >
-                <div className="adv-card-art">
-                  <span className="adv-chip">{label}</span>
-                </div>
-                <div className="adv-card-foot">
-                  <strong>{label}</strong>
-                  <small>{blurb}</small>
-                </div>
-              </button>
-            ))}
-          </div>
-          {portfolios.length > 0 && (
-            <div className="adv-form">
-              <label>
-                Portfolio
-                <select value={form.portfolioId} onChange={set("portfolioId")}>
-                  {portfolios.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-          )}
-        </>
-      ) : (
-        <div className="adv-form">
-          <label>
-            Report Title
-            <input value={form.name} onChange={set("name")} />
-          </label>
-          <label>
-            Client Name
-            <input value={form.client} onChange={set("client")} />
-          </label>
-          <label>
-            Prepared By
-            <input value={form.preparedBy} onChange={set("preparedBy")} />
-          </label>
-          <div className="adv-form-row">
-            <label>
-              Start Date
-              <input type="date" value={form.start} onChange={set("start")} />
-            </label>
-            <label>
-              End Date
-              <input type="date" value={form.end} onChange={set("end")} />
-            </label>
-          </div>
         </div>
       )}
     </Modal>

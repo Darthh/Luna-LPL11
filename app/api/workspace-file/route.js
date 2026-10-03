@@ -2,17 +2,18 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { decodeItem, validateItem, WorkspaceInputError } from "@/lib/advisorItems.mjs";
 import { documentCsv, documentPdf } from "@/lib/workspaceFiles.mjs";
-import { checkRateLimit, SIGNED_IN_LIMIT } from "@/lib/rateLimit";
+import { checkRateLimit, SIGNED_IN_LIMIT, ANON_LIMIT } from "@/lib/rateLimit";
 
 export async function POST(request) {
   const userId = (await auth())?.user?.id;
-  if (!userId) return Response.json({ error: "Sign in to download account documents." }, { status: 401 });
-  if (!(await checkRateLimit(`workspace-file:${userId}`, SIGNED_IN_LIMIT)).ok) return Response.json({ error: "Too many downloads." }, { status: 429 });
+  const key = userId || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'anonymous';
+  if (!(await checkRateLimit(`workspace-file:${key}`, userId ? SIGNED_IN_LIMIT : ANON_LIMIT)).ok) return Response.json({ error: "Too many downloads." }, { status: 429 });
   try {
     const raw = await request.text();
-    if (raw.length > 120000) return Response.json({ error: "Document is too large." }, { status: 413 });
+    if (raw.length > 4500000) return Response.json({ error: "Document is too large." }, { status: 413 });
     let body;
     try { body = JSON.parse(raw); } catch { return Response.json({ error: "Invalid JSON." }, { status: 400 }); }
+    if (!userId && (body.id || !body.item?.report)) return Response.json({ error: "Sign in to download account documents." }, { status: 401 });
     if (!["csv", "pdf"].includes(body.format)) return Response.json({ error: "Choose CSV or PDF." }, { status: 400 });
     let item;
     if (body.id) {
