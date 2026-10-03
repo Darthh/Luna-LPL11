@@ -135,6 +135,7 @@ export default function Header({ appearance, onAppearanceChange }) {
       <Link href="/dashboard" className="brand-link">
         <div className="logo" aria-hidden="true">
           <BrandMark size={30} />
+          <span className="halloween-mark" />
         </div>
         <h1>{t("Luna Terminal")}</h1>
       </Link>

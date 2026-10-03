@@ -1,4 +1,6 @@
 import "./globals.css";
+import "./halloween.css";
+import "./padres.css";
 import { Geist, Geist_Mono } from "next/font/google";
 import localFont from "next/font/local";
 import AuthSessionProvider from "@/components/AuthSessionProvider";

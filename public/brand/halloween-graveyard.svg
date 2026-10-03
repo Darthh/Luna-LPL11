@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 170">
+  <defs><radialGradient id="glow"><stop stop-color="#fbaa35" stop-opacity=".23"/><stop offset="1" stop-color="#fbaa35" stop-opacity="0"/></radialGradient></defs>
+  <ellipse cx="159" cy="133" rx="61" ry="37" fill="url(#glow)"/>
+  <g fill="#343039" stroke="#76616b" stroke-width="2">
+    <path d="M29 147V71a28 28 0 0 1 56 0v76Z" transform="rotate(-9 57 147)"/>
+    <path d="M91 149V99a22 22 0 0 1 44 0v50Z" transform="rotate(8 112 149)"/>
+  </g>
+  <g stroke="#b3a090" stroke-width="2" opacity=".7"><path d="M49 72v28m-10-16h20M100 103h19m-19 6h19"/></g>
+  <g transform="translate(161 121)">
+    <path d="M0-18q-4-14 6-18" fill="none" stroke="#78804a" stroke-width="5"/>
+    <path d="M0-18c-29-11-36 7-33 23 3 21 19 28 33 25 14 3 30-4 33-25 3-16-4-34-33-23Z" fill="#c0631f" stroke="#f09432" stroke-width="2"/>
+    <path d="M0-18c-9 10-10 37 0 48M-16-17c-9 10-10 30-3 42M16-17c9 10 10 30 3 42" fill="none" stroke="#f09432" opacity=".7"/>
+    <path d="m-23 1 12-8-2 13Zm46 0-12-8 2 13ZM0 7l-4 7h8Zm-22 10 9 2 4 6 8-4 8 4 4-6 11-2-5 11H-17Z" fill="#ffe29a"/>
+  </g>
+  <path d="M8 154q58-20 98 0t106-2v18H8Z" fill="#28212b"/>
+  <path d="m19 151-7-13m9 12 4-20m176 20 7-17m-9 17-3-12" stroke="#746048" stroke-width="2"/>
+</svg>

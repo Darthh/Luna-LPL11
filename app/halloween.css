@@ -1,0 +1,87 @@
+/* Seasonal palette and illustrations are scoped to the selected theme. */
+html[data-theme="halloween"] {
+  color-scheme: dark;
+  --bg: #100e15;
+  --panel: #1b1721;
+  --border: #41313c;
+  --text: #f7ecde;
+  --text-soft: #baa998;
+  --accent: #ffad4a;
+  --fg-line: #ac9aeb;
+  --price-line: #ffad4a;
+  --grid: #302631;
+  --chip-bg: #241d29;
+  --hover-bg: #332735;
+  --code-bg: #241d29;
+  --overlay-bg: #100e15cc;
+  --tick-color: #baa998;
+  --tooltip-bg: #241d29;
+  --tooltip-text: #f7ecde;
+  --tooltip-border: #684633;
+  --switch-track-bg: #574251;
+  --watermark-color: #baa99826;
+  --marker-color: #f7ecde;
+  --needle-color: #f7ecde;
+  --gauge-inactive-band: #332735;
+  --gauge-inactive-text: #baa998;
+  --gauge-active-text: #21140a;
+  --gauge-tick-text: #baa998;
+}
+html[data-pattern="haunted"] body {
+  background-image: url("/brand/halloween-lanterns.svg");
+  background-size: cover;
+  background-position: center bottom;
+  background-attachment: fixed;
+}
+html[data-theme="halloween"] header.site {
+  background-color: #ed8b29;
+  background-image: repeating-linear-gradient(100deg, #79340800 0 49px, #79340826 55px 62px, #ffc65b38 70px 78px, #79340800 89px 140px), linear-gradient(#ffb84b, #ed8b29 55%, #d56c1c);
+  border-bottom: 2px solid #71360f;
+  box-shadow: 0 3px 14px #a4481826;
+}
+html[data-theme="halloween"] header.site :is(.brand-link, h1, .theme-toggle, .header-about-link, .auth-btn) { color: #2c160b; }
+html[data-theme="halloween"] header.site .header-search {
+  background: #2f190dea;
+  border-color: #ffd29180;
+  color: #ffcb82;
+}
+html[data-theme="halloween"] header.site .header-search input { color: #fff2dd; }
+html[data-theme="halloween"] header.site .header-search input::placeholder { color: #d5b89a; }
+html[data-theme="halloween"] header.site .auth-btn-primary { background: #2f190d; color: #fff2dd; border-color: #2f190d; }
+html[data-theme="halloween"] header.site :is(.header-about-link, .theme-toggle, .auth-btn:not(.auth-btn-primary)) {
+  background: #2f190d;
+  border-color: #71360f;
+  color: #ffe8c1;
+}
+html[data-theme="halloween"] header.site .theme-toggle:hover { background: #5b2d1526; }
+.halloween-mark { display: none; }
+html[data-theme="halloween"] header.site .logo > :not(.halloween-mark) { display: none; }
+html[data-theme="halloween"] header.site .halloween-mark {
+  display: block;
+  width: 36px;
+  height: 32px;
+  background: url("/brand/luna-mark-light.png") center / contain no-repeat;
+  filter: brightness(0);
+}
+html[data-theme="halloween"] .ai-workspace .brand-mark { filter: brightness(0) invert(1); }
+html[data-theme="halloween"] .ai-workspace .ai-mark { filter: brightness(0) invert(1); }
+html[data-theme="halloween"] .ai-workspace .brand-mark-image-dark { display: block; }
+html[data-theme="halloween"] .ai-workspace .brand-mark-image-light { display: none; }
+html[data-theme="halloween"] :is(.tnav, .trail) {
+  background-image: url("/brand/halloween-web.svg"), url("/brand/halloween-graveyard.svg");
+  background-position: left top, center bottom;
+  background-size: 110px 110px, 190px auto;
+  background-repeat: no-repeat;
+}
+html[data-theme="halloween"] .trail { background-size: 70px 70px, 90px auto; }
+html[data-theme="halloween"] .ai-workspace {
+  background-image: url("/brand/halloween-web.svg");
+  background-position: right top;
+  background-size: 145px;
+  background-repeat: no-repeat;
+}
+@media (max-width: 600px) {
+  html[data-pattern="haunted"] body { background-image: url("/brand/halloween-lanterns-mobile.svg"); background-size: cover; background-position: center bottom; }
+  html[data-theme="halloween"] header.site .halloween-mark { width: 28px; height: 28px; }
+  html[data-theme="halloween"] .ai-workspace { background-size: 85px; }
+}

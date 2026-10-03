@@ -1,0 +1,58 @@
+/* San Diego's brown and gold, with light tan working surfaces. */
+html[data-theme="padres"] {
+  color-scheme: light;
+  --bg: #b6936a;
+  --panel: #f0dfc5;
+  --border: #b8976c;
+  --text: #2f241c;
+  --text-soft: #513922;
+  --accent: #795015;
+  --fg-line: #776032;
+  --price-line: #a66912;
+  --grid: #ddc6a3;
+  --chip-bg: #e7d2b3;
+  --hover-bg: #dfc49b;
+  --code-bg: #e7d2b3;
+  --overlay-bg: #f0dfc5dc;
+  --tick-color: #71563d;
+  --tooltip-bg: #f7ecd9;
+  --tooltip-text: #2f241c;
+  --tooltip-border: #b8976c;
+  --switch-track-bg: #b8976c;
+  --watermark-color: #71563d33;
+  --marker-color: #2f241c;
+  --needle-color: #2f241c;
+  --gauge-inactive-band: #ddc6a3;
+  --gauge-inactive-text: #71563d;
+  --gauge-active-text: #2f241c;
+  --gauge-tick-text: #71563d;
+}
+html[data-theme="padres"] header.site {
+  background: #ffc425;
+  border-bottom: 2px solid #2f241c;
+  color: #2f241c;
+}
+html[data-theme="padres"] header.site :is(.brand-link, h1) { color: #2f241c; }
+html[data-theme="padres"] header.site :is(.theme-toggle, .header-about-link, .auth-btn) {
+  background: #2f241c;
+  border-color: #2f241c;
+  color: #ffe8a3;
+}
+html[data-theme="padres"] header.site .header-search { background: #fff0c5; border-color: #987123; color: #2f241c; }
+html[data-theme="padres"] header.site .header-search input { color: #2f241c; }
+html[data-theme="padres"] header.site .header-search input::placeholder { color: #71563d; }
+html[data-theme="padres"] :is(.tnav, .trail) { background: #d6b68b; }
+html[data-theme="padres"] .terminal-shell > #content::before {
+  content: "";
+  display: block;
+  height: 136px;
+  margin-bottom: 12px;
+  border: 1px solid #684623;
+  border-radius: 8px;
+  background: url("/brand/padres-logo.svg") center / auto 110px no-repeat,
+    repeating-linear-gradient(90deg, #ffffff00 0 38px, #2f241c10 39px 40px),
+    linear-gradient(110deg, #a78050, #f3dbab 42%, #f3dbab 58%, #a78050);
+}
+@media (max-width: 600px) {
+  html[data-theme="padres"] .terminal-shell > #content::before { height: 100px; margin-top: 62px; background-size: auto 80px, auto, auto; }
+}
