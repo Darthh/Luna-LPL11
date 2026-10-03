@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 
-export default function AIResearchPanel({ model, question, disabled, selected, onSelect }) {
+export default function AIResearchPanel({ disabled, selected, onSelect }) {
   const [jobs, setJobs] = useState([]);
   const [available, setAvailable] = useState(false);
   const [agentAvailable, setAgentAvailable] = useState(false);
@@ -14,7 +14,7 @@ export default function AIResearchPanel({ model, question, disabled, selected, o
         const response = await fetch("/api/ai-documents", { cache: "no-store" });
         const body = await response.json();
         if (!active) return;
-        if (!response.ok) { setAvailable(false); setMessage(body.error || "Research is unavailable."); return; }
+        if (!response.ok) { setAvailable(false); setMessage(response.status === 503 ? "" : body.error || "Research is unavailable."); return; }
         setAvailable(true); setAgentAvailable(body.agentAvailable); setJobs(body.jobs || []); setMessage("");
       } catch { if (active) { setAvailable(false); setMessage("Research services are unavailable."); } }
     }
@@ -43,13 +43,11 @@ export default function AIResearchPanel({ model, question, disabled, selected, o
   }
   return <details className="ai-research-panel">
     <summary>Documents &amp; research</summary>
-    <p>Upload a document for cited answers, or save a research report. Files are processed in AWS and remain private to your account or this browser.</p>
+    <p>Upload a document for cited answers. Files are processed in AWS and remain private to your account or this browser.</p>
     <div className="ai-research-actions">
-      <label className="ai-tool-button">Upload document<input aria-label="Upload research document" type="file" accept=".pdf,.txt,.md,.png,.jpg,.jpeg,.mp3,.wav" disabled={!available || working || disabled} onChange={upload} /></label>
-      <button type="button" className="ai-tool-button" disabled={!available || !agentAvailable || working || disabled || !question.trim() || !model.startsWith("aws-")}
-        onClick={() => create("/api/ai-jobs", { headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query: question, model }) })}>Research in background</button>
+      <label className="ai-tool-button">Upload document<span className="ai-research-upload"><input aria-label="Upload research document" type="file" accept=".pdf,.txt,.md,.png,.jpg,.jpeg,.mp3,.wav" disabled={!available || working || disabled} onChange={upload} /><small className="ai-research-formats">PDF, txt, imgs</small></span></label>
     </div>
-    <small>PDF, text, Markdown, images, MP3 or WAV. Maximum 4 MB.</small>
+    <small>Maximum 4 MB.</small>
     {message && <p role="status">{message}</p>}
     <ul>{jobs.map(job => <li key={job.id}>
       <div>{job.kind === "document" && job.status === "ready" ? <label><input type="checkbox" checked={selected.includes(job.id)} disabled={disabled || !agentAvailable} onChange={() => onSelect(selected.includes(job.id) ? selected.filter(id => id !== job.id) : [...selected, job.id].slice(0, 8))} /> {job.title}</label> : <strong>{job.title}</strong>} <span>{job.status}</span></div>

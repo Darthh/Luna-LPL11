@@ -133,9 +133,11 @@ html[data-layout="terminal"] #content .ai-workspace .ai-welcome h2 { font-size: 
 .ai-research-panel { width: min(100%, 760px); margin: 0 auto 12px; padding: 12px 16px; border: 1px solid var(--border, #333); border-radius: 12px; font-size: 13px; }
 .ai-research-panel > summary { cursor: pointer; font-weight: 600; }
 .ai-research-panel p { margin: 10px 0; line-height: 1.5; }
-.ai-research-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+.ai-research-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+.ai-research-formats { white-space: nowrap; }
+.ai-research-upload { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .ai-research-actions label { display: flex; flex-wrap: wrap; gap: 8px; }
-.ai-research-actions input { max-width: 230px; }
+.ai-research-actions input { width: 200px; min-width: 0; max-width: 100%; }
 .ai-research-panel ul { max-height: 240px; overflow-y: auto; list-style: none; padding: 0; }
 .ai-research-panel li { padding: 10px 0; border-top: 1px solid var(--border, #333); overflow-wrap: anywhere; }
 .ai-research-panel li span { opacity: .7; margin-left: 8px; }

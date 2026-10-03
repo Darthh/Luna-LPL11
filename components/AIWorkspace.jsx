@@ -456,7 +456,7 @@ export default function AIWorkspace({ chatId = null }) {
           </div>
         )}
 
-        {mode === "hosted" && <AIResearchPanel model={hostedModel} question={input} disabled={busy} selected={documentIds} onSelect={setDocumentIds} />}
+        {mode === "hosted" && <AIResearchPanel disabled={busy} selected={documentIds} onSelect={setDocumentIds} />}
         <form className="ai-composer" onSubmit={(event) => { event.preventDefault(); send(input); }}>
           <textarea
             value={input}
