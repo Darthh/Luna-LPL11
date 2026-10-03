@@ -1,4 +1,9 @@
 /* Scoped overrides keep the dashboard's layout and theme controls intact. */
+.ai-greeting { display: inline-block; text-wrap: balance; }
+@keyframes ai-greeting-appear { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: no-preference) {
+  .ai-greeting { animation: ai-greeting-appear 400ms ease-out; }
+}
 .ai-workspace.ai-workspace { overflow: visible; }
 .ai-workspace.ai-workspace::before { display: none; }
 .ai-workspace .ai-stage { width: min(100%, 760px); }

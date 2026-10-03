@@ -6,6 +6,7 @@ import "./AIWorkspace.css";
 import { researchMessages } from "@/lib/chatResearch.mjs";
 import LunaAILogo from "@/components/LunaAILogo";
 import ChatSuggestions from "@/components/ChatSuggestions";
+import ChatGreeting from "@/components/ChatGreeting";
 import { ollamaModels, ollamaChat } from "@/lib/ollamaClient.mjs";
 import { readChats, saveChat } from "@/lib/chatHistory";
 import { STOCK_RANGES, chartGeometry, stockLookupsForMessages, stockLookupsForAnswer, loadStockCards, isChatStockSymbolAllowed } from "@/lib/chatStockCard.mjs";
@@ -437,7 +438,7 @@ export default function AIWorkspace({ chatId = null }) {
         <header className="ai-welcome">
           <span className="ai-mark" aria-hidden="true"><LunaAILogo /></span>
           <div>
-            <h2>{messages.length ? activeLabel : "What are we looking into?"}</h2>
+            <h2>{messages.length ? activeLabel : <ChatGreeting />}</h2>
           </div>
         </header>
 
