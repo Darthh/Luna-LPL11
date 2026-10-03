@@ -34,6 +34,7 @@ export default function PageChrome({ children }) {
         pattern: d.dataset.pattern || DEFAULTS.pattern,
         density: d.dataset.density || DEFAULTS.density,
         weight: d.dataset.weight || DEFAULTS.weight,
+        sidebar: d.dataset.sidebar || DEFAULTS.sidebar,
         // A font that has since been removed leaves a stale preference behind,
         // so fall back rather than seeding state with a name FONTS no longer has.
         font: FONTS[localStorage.getItem(KEYS.font)] ? localStorage.getItem(KEYS.font) : DEFAULTS.font,
@@ -54,6 +55,7 @@ export default function PageChrome({ children }) {
       d.dataset.pattern = next.pattern;
       d.dataset.density = next.density;
       d.dataset.weight = next.weight;
+      d.dataset.sidebar = next.sidebar;
       d.style.setProperty("--font-ui", FONTS[next.font] || FONTS[DEFAULTS.font]);
       try {
         localStorage.setItem(KEYS.theme, next.theme);
@@ -61,6 +63,7 @@ export default function PageChrome({ children }) {
         localStorage.setItem(KEYS.density, next.density);
         localStorage.setItem(KEYS.font, next.font);
         localStorage.setItem(KEYS.weight, next.weight);
+        localStorage.setItem(KEYS.sidebar, next.sidebar);
       } catch {}
       setAppearance(next);
     },

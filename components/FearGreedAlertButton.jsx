@@ -9,9 +9,9 @@ import Link from "next/link";
 import { MIN_THRESHOLD, MAX_THRESHOLD } from "@/lib/fearGreedAlerts";
 import { errorFrom, readJson } from "@/lib/readJson";
 
-export default function FearGreedAlertButton() {
+export default function FearGreedAlertButton({ embedded = false }) {
   const { data: session, status } = useSession();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(embedded);
   const [alerts, setAlerts] = useState([]);
   const [direction, setDirection] = useState("below");
   const [threshold, setThreshold] = useState("10");
@@ -74,7 +74,7 @@ export default function FearGreedAlertButton() {
 
   return (
     <div className="fga">
-      <button
+      {!embedded && <button
         type="button"
         onClick={() => signedIn && setOpen((o) => !o)}
         aria-expanded={open}
@@ -96,7 +96,7 @@ export default function FearGreedAlertButton() {
           />
         </svg>
         Alert me
-      </button>
+      </button>}
 
       {!signedIn && (
         <span className="fga-signin">

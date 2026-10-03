@@ -127,6 +127,13 @@ export default function SettingsMenu({ appearance, onAppearanceChange }) {
           {/* Alerts belong to an account, so the row only appears for one.
               It leaves the menu for a page rather than nesting a list inside
               a dropdown that is already several controls deep. */}
+          <h3>Sidebar</h3>
+          <AppearanceRow
+            label="Sidebar size"
+            value={appearance.sidebar || "small"}
+            options={[["small", "Small"], ["medium", "Medium"], ["large", "Large"]]}
+            onChange={(v) => onAppearanceChange("sidebar", v)}
+          />
           {session?.user && (
             <Link className="settings-row" href="/alerts" onClick={() => setOpen(false)}>
               <BellIcon />
