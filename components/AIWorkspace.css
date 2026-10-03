@@ -1,4 +1,5 @@
 /* Scoped overrides keep the dashboard's layout and theme controls intact. */
+.ai-memory-status { display: block; padding: 10px 16px 0; color: var(--text-soft); font-size: 12px; }
 .ai-workspace .ai-welcome > div { flex: 0 1 auto; min-width: 0; text-align: left; }
 .ai-greeting { display: block; white-space: nowrap; }
 @keyframes ai-greeting-appear { from { opacity: 0; } to { opacity: 1; } }
