@@ -22,16 +22,19 @@ export default function ChatGreeting() {
   useEffect(() => {
     const element = greeting.current;
     const heading = element.parentElement;
+    const welcome = heading.closest(".ai-welcome");
     const fit = () => {
       const size = parseFloat(getComputedStyle(heading).fontSize);
       element.style.fontSize = `${size}px`;
-      const available = heading.clientWidth;
+      const logoWidth = welcome.querySelector(".ai-mark")?.getBoundingClientRect().width ?? 0;
+      const gap = logoWidth ? parseFloat(getComputedStyle(welcome).columnGap) : 0;
+      const available = welcome.clientWidth - logoWidth - gap;
       if (available > 0 && element.scrollWidth > available) {
         element.style.fontSize = `${size * available / element.scrollWidth * 0.98}px`;
       }
     };
     const observer = new ResizeObserver(fit);
-    observer.observe(heading);
+    observer.observe(welcome);
     let active = true;
     document.fonts.ready.then(() => { if (active) fit(); });
     fit();
