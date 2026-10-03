@@ -76,6 +76,36 @@ npx sst secret set FinnhubApiKey <value> --stage <stage>
 npx sst secret list --stage <stage>
 ```
 
+### Google and Apple sign-in
+
+Each button appears once its two secrets are set for the stage. The callback
+URLs use the stage's address, e.g. `https://d2wyrxhbmhmu6j.cloudfront.net`.
+
+**Google**
+1. https://console.cloud.google.com/apis/credentials → *Create credentials →
+   OAuth client ID → Web application*.
+2. Authorized redirect URI: `https://<site>/api/auth/callback/google` (add
+   `http://localhost:3000/api/auth/callback/google` for local dev).
+3. `npx sst secret set AuthGoogleId <client id> --stage <stage>` and
+   `npx sst secret set AuthGoogleSecret <client secret> --stage <stage>`.
+
+**Apple** (needs a paid Apple Developer account; HTTPS only, so not on localhost)
+1. developer.apple.com → Identifiers: an **App ID** with *Sign in with Apple*,
+   then a **Services ID** (e.g. `com.luna.web`). That ID is `AuthAppleId`.
+2. Configure the Services ID for Sign in with Apple: domain
+   `<site host>`, return URL `https://<site>/api/auth/callback/apple`.
+3. Keys → a key with *Sign in with Apple*. Download the `.p8`, note its Key ID
+   and your Team ID.
+4. `npm run apple:secret -- --team <TeamID> --key-id <KeyID> --client-id <ServicesID> --key AuthKey_XXXX.p8`
+   prints the client secret, a JWT valid for 180 days. Store it with
+   `npx sst secret set AuthAppleSecret <jwt> --stage <stage>`. **Renew it
+   before it expires**, or Apple sign-in stops working.
+
+A visitor who signed up with email and password and later uses Google or Apple
+with the same email is not merged into one account automatically (Auth.js
+`OAuthAccountNotLinked`): sign-ups aren't email-verified, so auto-linking
+would let anyone pre-register someone else's address.
+
 Changing a secret takes effect on the next deploy. `npx sst remove --stage
 <stage>` deletes a stage. `production` is protected: its resources are
 retained on removal, and the table has point-in-time recovery and deletion
