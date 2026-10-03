@@ -165,7 +165,9 @@ ollama pull llama3.2
 
 In the AI workspace, open the model selector, choose **Ollama**, refresh models, and select the installed model. Use the `localhost` address shown above. Browser origin restrictions may require adding your exact local site origin to `OLLAMA_ORIGINS` and restarting Ollama. Local chat does not require `ANTHROPIC_API_KEY`.
 
-Accounts and personal data features require a PostgreSQL connection in `DATABASE_URL`, `AUTH_SECRET`, and a database schema matching [`prisma/schema.prisma`](prisma/schema.prisma). This repository snapshot includes the schema but no Prisma migration directory; provision the database schema for your environment before using sign-in, watchlists, alerts, or advisor records. Google sign-in also needs the optional Google OAuth variables below.
+Accounts and personal data features require a PostgreSQL connection in `DATABASE_URL`, `AUTH_SECRET`, and the schema, created with `npm run db:migrate` (SQL in [`migrations/`](migrations)). Google sign-in also needs the optional Google OAuth variables below.
+
+**Step-by-step setup**, including accounts, the AI chat on Amazon Bedrock and troubleshooting: [SETUP.md](SETUP.md). Deploying to AWS: [docs/DEPLOY.md](docs/DEPLOY.md).
 
 ## Configuration
 
