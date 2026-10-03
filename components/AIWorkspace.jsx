@@ -8,7 +8,7 @@ import LunaAILogo from "@/components/LunaAILogo";
 import ChatSuggestions from "@/components/ChatSuggestions";
 import { ollamaModels, ollamaChat } from "@/lib/ollamaClient.mjs";
 import { readChats, saveChat } from "@/lib/chatHistory";
-import { STOCK_RANGES, buildStockCard, chartGeometry, stockLookupForMessage } from "@/lib/chatStockCard.mjs";
+import { STOCK_RANGES, chartGeometry, stockLookupsForMessages, stockLookupsForAnswer, loadStockCards } from "@/lib/chatStockCard.mjs";
 import { HOSTED_MODELS, DEFAULT_HOSTED_MODEL } from "@/lib/hostedModels.mjs";
 
 const LOCAL_KEY = "lunaLocalModel";
@@ -332,24 +332,8 @@ export default function AIWorkspace({ chatId = null }) {
   async function send(value) {
     const question = value.trim();
     if (!question || busy) return;
-    const lookup = stockLookupForMessage(question);
-    const stockCardPromise = lookup
-      ? (async () => {
-          let symbol = lookup.symbol;
-          if (!symbol) {
-            const searchResponse = await fetch(`/api/stock-search?q=${encodeURIComponent(lookup.query)}`);
-            if (!searchResponse.ok) return null;
-            symbol = (await searchResponse.json()).results?.[0]?.symbol;
-          }
-          if (!symbol) return null;
-          const [profileResponse, chartResponse] = await Promise.all([
-            fetch(`/api/stock-profile?symbol=${encodeURIComponent(symbol)}`),
-            fetch(`/api/stock-chart?symbol=${encodeURIComponent(symbol)}&range=1d`),
-          ]);
-          if (!profileResponse.ok || !chartResponse.ok) return null;
-          return buildStockCard(await profileResponse.json(), await chartResponse.json());
-        })().catch(() => null)
-      : Promise.resolve(null);
+    const lookups = stockLookupsForMessages(question);
+    const stockCardsPromise = loadStockCards(lookups);
     const history = [...messages.filter((message) => !message.error), { role: "user", content: question }];
     const conversationId = activeChatId.current || crypto.randomUUID();
     activeChatId.current = conversationId;
@@ -364,11 +348,12 @@ export default function AIWorkspace({ chatId = null }) {
       { ...current.at(-1), role: "assistant", content, sources, model: activeLabel },
     ]);
 
-    stockCardPromise.then((stockCard) => {
-      if (!stockCard) return;
+    let pending = true;
+    stockCardsPromise.then((stockCards) => {
+      if (!pending || activeChatId.current !== conversationId || !stockCards.length) return;
       setMessages((current) => [
         ...current.slice(0, -1),
-        { ...current.at(-1), stockCard },
+        { ...current.at(-1), stockCards },
       ]);
     });
 
@@ -410,8 +395,12 @@ export default function AIWorkspace({ chatId = null }) {
         answer = await readLocalResponse(response, update);
       }
       if (!answer?.trim()) throw new Error("The model returned an empty answer.");
-      const stockCard = await stockCardPromise;
-      const assistantMessage = { role: "assistant", content: answer, sources, model: activeLabel, ...(stockCard ? { stockCard } : {}) };
+      const stockCards = await stockCardsPromise;
+      const answerLookups = stockLookupsForAnswer(answer).filter(lookup =>
+        !lookups.some(existing => existing.symbol === lookup.symbol) &&
+        !stockCards.some(card => card.symbol === lookup.symbol));
+      stockCards.push(...await loadStockCards(answerLookups));
+      const assistantMessage = { role: "assistant", content: answer, sources, model: activeLabel, stockCards };
       setMessages([...history, assistantMessage]);
       saveChat({
         id: conversationId,
@@ -421,8 +410,10 @@ export default function AIWorkspace({ chatId = null }) {
     } catch (reason) {
       const message = reason instanceof Error ? reason.message : String(reason);
       setError(message);
-      setMessages((current) => [...current.slice(0, -1), { role: "assistant", content: message, error: true }]);
+      const stockCards = await stockCardsPromise;
+      setMessages((current) => [...current.slice(0, -1), { role: "assistant", content: message, error: true, stockCards }]);
     } finally {
+      pending = false;
       setSearching(false);
       setBusy(false);
     }
@@ -447,7 +438,9 @@ export default function AIWorkspace({ chatId = null }) {
             {messages.map((message, index) => (
               <article key={index} className={`ai-message ai-message-${message.role}${message.error ? " is-error" : ""}`}>
                 {message.role === "assistant" && <div className="ai-answer-label"><LunaAILogo /><strong>{message.model || activeLabel}</strong></div>}
-                {message.stockCard && <StockQuoteCard card={message.stockCard} />}
+                {(message.stockCards || (message.stockCard ? [message.stockCard] : [])).map(card => card.unavailable
+                  ? <p key={card.symbol}>Chart data is unavailable for <Link href={`/stock/${encodeURIComponent(card.symbol)}`}>{card.symbol}</Link>. Open the stock page to try again.</p>
+                  : <StockQuoteCard key={card.symbol} card={card} />)}
                 {message.content ? <Rich text={message.content} /> : <span className="ai-thinking">{searching ? "Searching the web" : "Thinking"}</span>}
                 {message.sources?.length > 0 && <div className="ai-sources" aria-label="Web sources"><span>Sources</span>{message.sources.map((source, i) => <a key={source.url} href={source.url} target="_blank" rel="noopener noreferrer">{i + 1}. {source.title}</a>)}</div>}
               </article>
