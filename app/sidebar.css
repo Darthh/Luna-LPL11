@@ -1,5 +1,21 @@
-html[data-sidebar="medium"] { --tnav-w: 260px; --tnav-w-collapsed: 56px; --trail-w: 54px; }
-html[data-sidebar="large"] { --tnav-w: 310px; --tnav-w-collapsed: 64px; --trail-w: 66px; }
+html[data-sidebar="medium"] { --tnav-w: 260px; --tnav-w-collapsed: 56px; --trail-w: 54px; --sidebar-scale: 1.15; }
+html[data-sidebar="large"] { --tnav-w: 310px; --tnav-w-collapsed: 64px; --trail-w: 66px; --sidebar-scale: 1.3; }
+html[data-sidebar] .tnav { font-size: calc(0.78rem * var(--sidebar-scale, 1)); }
+html[data-sidebar] .tnav-section-head { font-size: calc(0.68rem * var(--sidebar-scale, 1)); }
+html[data-sidebar] .tnav :is(.tnav-chat-search input, .tnav-chat-empty) { font-size: calc(0.7rem * var(--sidebar-scale, 1)); }
+html[data-sidebar] .tnav-badge { font-size: calc(0.6rem * var(--sidebar-scale, 1)); }
+html[data-sidebar] .tnav-recent .tnav-item { font-size: calc(0.72rem * var(--sidebar-scale, 1)); }
+html[data-sidebar] .tnav-full { font-size: calc(0.62rem * var(--sidebar-scale, 1)); }
+html[data-sidebar] .tnav :is(.tnav-item, .tnav-section-head) { min-height: calc(var(--row-h) * var(--sidebar-scale, 1)); gap: calc(8px * var(--sidebar-scale, 1)); }
+html[data-sidebar] .tnav-collapse { min-height: calc(34px * var(--sidebar-scale, 1)); }
+html[data-sidebar] .tnav-icon { flex-basis: calc(14px * var(--sidebar-scale, 1)); }
+html[data-sidebar] .tnav-icon svg { width: calc(14px * var(--sidebar-scale, 1)); height: calc(14px * var(--sidebar-scale, 1)); }
+html[data-sidebar] .tnav-collapse svg { width: calc(16px * var(--sidebar-scale, 1)); height: calc(16px * var(--sidebar-scale, 1)); }
+html[data-sidebar] .tnav-chevron svg { width: calc(12px * var(--sidebar-scale, 1)); height: calc(12px * var(--sidebar-scale, 1)); }
+html[data-sidebar] .tnav-chat-delete svg { width: calc(13px * var(--sidebar-scale, 1)); height: calc(13px * var(--sidebar-scale, 1)); }
+html[data-sidebar] .tnav-chat-search input { height: calc(26px * var(--sidebar-scale, 1)); }
+html[data-sidebar] .trail-btn > svg { width: calc(17px * var(--sidebar-scale, 1)); height: calc(17px * var(--sidebar-scale, 1)); }
+html[data-sidebar] .trail-tip { font-size: calc(0.72rem * var(--sidebar-scale, 1)); }
 html[data-sidebar="medium"] .trail-btn { width: 38px; height: 38px; }
 html[data-sidebar="large"] .trail-btn { width: 46px; height: 46px; }
 .notification-settings { display: grid; gap: 14px; }
