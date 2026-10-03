@@ -108,7 +108,7 @@ export default function TerminalRail() {
   const items = [
     { id: "profile", label: session?.user ? t("Profile") : t("Sign in"), icon: ProfileIcon },
     { id: "events", label: t("Upcoming events"), icon: EventsIcon },
-    { id: "popular", label: t("Top 20 most popular"), icon: TrendingIcon },
+    { id: "popular", label: t("Most popular stocks"), icon: TrendingIcon },
     { id: "watchlist", label: t("My watchlist"), icon: WatchlistIcon },
     { id: "movers", label: t("Market movers"), icon: FlameIcon },
     { id: "alerts", label: t("Notifications"), icon: BellIcon },

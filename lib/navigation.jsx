@@ -262,8 +262,8 @@ export const NAV_LINKS = [
       { href: "/portfolio-comparison", label: "Portfolio comparison", icon: CompareIcon, widget: "portfolio" },
       { href: "/regression-analysis", label: "Regression analysis", icon: ScatterIcon, widget: "regression" },
       { href: "/graphs/historical", label: "Historical metrics", icon: MultiplesIcon, widget: "valuation" },
-      { href: "/graphs/comparison", label: "Company comparison (Comparison)", icon: CompareLinesIcon, widget: "valuationCompare" },
-      { href: "/rsi-le", label: "1M Live chart", icon: DollarIcon },
+      { href: "/graphs/comparison", label: "Company comparison", icon: CompareLinesIcon, widget: "valuationCompare" },
+      { href: "/rsi-le", label: "Live chart", icon: DollarIcon },
     ],
   },
   {
@@ -279,7 +279,7 @@ export const NAV_LINKS = [
       { href: "/company-world-map", label: "Company world map", icon: WorldMapIcon, widget: "worldMap" },
       { href: "/dashboard#fear-greed", label: "Market sentiment", icon: DashboardIcon, widget: "gauge" },
       { href: "/dashboard#upcoming-events", label: "Upcoming events", icon: CalendarIcon, widget: "events" },
-      { href: "/dashboard#popular-stocks", label: "Top 20 Popular stocks", icon: HotIcon, widget: "popular" },
+      { href: "/dashboard#popular-stocks", label: "Most popular stocks", icon: HotIcon, widget: "popular" },
     ],
   },
   {
