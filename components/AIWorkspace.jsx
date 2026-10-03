@@ -230,7 +230,6 @@ async function readLocalResponse(response, onText) {
 export default function AIWorkspace({ chatId = null }) {
   const { data: session, status: authStatus } = useSession();
   const accountId = session?.user?.id;
-  const [accountData, setAccountData] = useState(true);
   const [accountStatus, setAccountStatus] = useState("");
   const [webSearch, setWebSearch] = useState(false);
   const [searching, setSearching] = useState(false);
@@ -387,14 +386,14 @@ export default function AIWorkspace({ chatId = null }) {
     try {
       let answer;
       let outgoing = history.map(({ role, content }) => ({ role, content }));
-      if (accountData && accountId && mode !== "hosted") {
+      if (accountId && mode !== "hosted") {
         try {
           const workspace = await workspaceRequest("/api/account-workspace", { query: question });
           outgoing = localWorkspaceMessages(outgoing, workspace);
           setAccountStatus(Object.values(workspace.sections).some(s => s.status !== "ready") ? "Some account data is unavailable" : "Account data connected");
         } catch (e) {
           setAccountStatus(e.message);
-          throw new Error("Could not read your account data. Retry or turn off Account data to continue without it.");
+          throw new Error("Could not read your account data. Please retry.");
         }
       }
       const excluded = history.slice(-12).filter((message) => message.role === "user").map((message) => message.content);
@@ -434,7 +433,7 @@ export default function AIWorkspace({ chatId = null }) {
         const response = await fetch("/api/ai-chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages: outgoing, model: hostedModel, webResearch: webSearch, conversationId, documentIds, workspace: accountData }),
+          body: JSON.stringify({ messages: outgoing, model: hostedModel, webResearch: webSearch, conversationId, documentIds, workspace: true }),
         });
         answer = await readHostedResponse(response, update, data => {
           if (data?.result?.draft && drafts.length < 3) drafts.push(data.result.draft);
@@ -546,7 +545,6 @@ export default function AIWorkspace({ chatId = null }) {
             maxLength={8000}
           />
           <div className="ai-composer-tools">
-            <button type="button" className="ai-tool-button" disabled={busy || authStatus !== "authenticated"} aria-pressed={accountData && !!accountId} onClick={() => setAccountData(on => !on)} title={accountId ? "Use your account watchlist, portfolios, reports and Finance CRM with the selected model." : "Sign in to use your account data."}>Account data{accountId && accountData ? " on" : ""}</button>
             {mode === "hosted" && <AIResearchPanel disabled={busy} selected={documentIds} onSelect={setDocumentIds} />}
             <button type="button" className="ai-tool-button ai-web-toggle" disabled={busy} onClick={() => setWebSearch((on) => !on)} aria-pressed={webSearch} title="Search the web before answering. Your question is sent to Luna's search service.">
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18"/></svg>

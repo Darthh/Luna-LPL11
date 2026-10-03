@@ -102,7 +102,7 @@ export async function POST(request) {
     return Response.json({ error: "Gemini requires GEMINI_API_KEY to be configured on the server." }, { status: 503 });
   }
 
-  const workspaceChat = body.workspace === true;
+  const workspaceChat = true;
   const account = workspaceChat ? await readAccountWorkspace(prisma, session?.user?.id, messages.at(-1).content) : null;
   const system = systemPrompt() + (workspaceChat ? `\n${WORKSPACE_INSTRUCTIONS}\n<account_workspace>${JSON.stringify(account)}</account_workspace>` : "");
   const tools = workspaceChat ? [...TOOL_SCHEMA, ...ACCOUNT_TOOL_SCHEMA] : TOOL_SCHEMA;
