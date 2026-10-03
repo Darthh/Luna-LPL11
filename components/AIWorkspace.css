@@ -1,5 +1,5 @@
 /* Scoped overrides keep the dashboard's layout and theme controls intact. */
-.ai-workspace .ai-welcome > div { flex: 1; min-width: 0; text-align: center; }
+.ai-workspace .ai-welcome > div { flex: 0 1 auto; min-width: 0; text-align: left; }
 .ai-greeting { display: block; white-space: nowrap; }
 @keyframes ai-greeting-appear { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: no-preference) {
@@ -9,7 +9,7 @@
 .ai-workspace.ai-workspace::before { display: none; }
 .ai-workspace .ai-stage { width: min(100%, 760px); min-width: 0; }
 .ai-workspace .ai-stage:not(.has-chat) { top: 40px; }
-.ai-workspace .ai-welcome { margin-bottom: 30px; gap: 16px; }
+.ai-workspace .ai-welcome { margin-bottom: 30px; gap: 8px; }
 .ai-workspace .ai-mark { box-shadow: none; border-radius: 0; }
 .ai-workspace .ai-welcome h2,
 html[data-layout="terminal"] #content .ai-workspace .ai-welcome h2 { font-size: clamp(28px, 3.3vw, 38px); font-weight: 500; letter-spacing: -0.035em; line-height: 1.2; }
@@ -124,7 +124,7 @@ html[data-layout="terminal"] #content .ai-workspace .ai-welcome h2 { font-size: 
 .ai-sources > span { width: 100%; color: var(--text-soft); }
 .ai-sources a { max-width: 100%; overflow-wrap: anywhere; padding: 4px 8px; border: 1px solid var(--border); border-radius: 8px; }
 @media (max-width: 700px) {
-  .ai-workspace .ai-welcome { justify-content: center; align-items: center; gap: 10px; }
+  .ai-workspace .ai-welcome { justify-content: center; align-items: center; gap: 8px; }
   .ai-workspace .ai-welcome h2,
   html[data-layout="terminal"] #content .ai-workspace .ai-welcome h2 { font-size: clamp(24px, 6vw, 30px); }
   .ai-workspace .ai-mark { width: 32px; height: 32px; }
