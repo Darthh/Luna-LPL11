@@ -35,7 +35,7 @@ export async function GET(request) {
   const session = await auth();
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
   const identity = session?.user?.id ?? `ip:${ip}`;
-  const rate = checkRateLimit(`exa:eventnews:${identity}`, session?.user?.id ? USER_LIMIT : ANON_LIMIT);
+  const rate = await checkRateLimit(`exa:eventnews:${identity}`, session?.user?.id ? USER_LIMIT : ANON_LIMIT);
   if (!rate.ok) {
     return Response.json(
       { error: "Research limit reached. Try again after the hourly window resets." },

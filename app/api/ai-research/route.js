@@ -9,7 +9,7 @@ export async function POST(request) {
   }
   const session = await auth();
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
-  const rate = checkRateLimit(`exa:chat:${session?.user?.id ?? `ip:${ip}`}`, session?.user?.id ? 60 : 15);
+  const rate = await checkRateLimit(`exa:chat:${session?.user?.id ?? `ip:${ip}`}`, session?.user?.id ? 60 : 15);
   if (!rate.ok) return Response.json({ error: "Web search limit reached. Try again shortly." }, {
     status: 429, headers: { "Retry-After": String(rate.retryAfterSeconds) },
   });
