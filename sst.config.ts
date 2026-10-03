@@ -7,10 +7,11 @@
 //                   |-> DynamoDB  LunaData   chats now; rate limits, caches, game rooms next
 //                   |-> S3        LunaFiles  parsed 13F filings, avatars, exports
 //                   |-> Aurora DSQL LunaDb   accounts, watchlists, alerts, CRM
+//                   |-> Bedrock      Claude for the AI assistant (IAM, no API key)
 //
 // Every link grants the Lambda IAM access to that resource, so production has
-// no database password and no AWS keys - only third-party API keys, which are
-// SST secrets (`npx sst secret set <Name> <value> --stage <stage>`).
+// no database password, no AWS keys and no AI key - only third-party API keys,
+// which are SST secrets (`npx sst secret set <Name> <value> --stage <stage>`).
 
 export default $config({
   app(input) {
@@ -78,7 +79,14 @@ export default $config({
     // ---- web ---------------------------------------------------------------
     const web = new sst.aws.Nextjs("LunaWeb", {
       link: [table, files, db],
+      // Claude in Amazon Bedrock, called with this function's own role - so
+      // the assistant needs no Anthropic key in AWS. Haiku 4.5 is open to all
+      // Bedrock accounts; other models may need access granted in the
+      // Bedrock console first. Narrow `resources` to model ARNs in Phase 6.
+      permissions: [{ actions: ["bedrock-mantle:CreateInference"], resources: ["*"] }],
       environment: {
+        AI_PROVIDER: process.env.AI_PROVIDER ?? "bedrock",
+        ...(process.env.AI_BOT_MODEL ? { AI_BOT_MODEL: process.env.AI_BOT_MODEL } : {}),
         CHAT_TABLE: table.name,
         DATA_BUCKET: files.name,
         DSQL_ENDPOINT: db.endpoint,

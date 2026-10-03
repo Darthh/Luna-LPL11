@@ -1,4 +1,3 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { auth } from "@/auth";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { findPages } from "@/lib/sitePages";
@@ -6,26 +5,15 @@ import { answerLocally, renderAnswer } from "@/lib/liloLocal";
 import { fetchYahooQuotes } from "@/lib/yahooQuote";
 import { YAHOO_USER_AGENT } from "@/lib/userAgent";
 import { zoneOf } from "@/lib/zone";
+import { getAiClient } from "@/lib/aiProvider.mjs";
 import { GET as fearGreedRoute } from "../fear-greed/route";
 
 // The AI Bot's harness: Claude, wired to the same live feeds the rest of the
 // site draws on. The grounding is the point - a language model asked "what's
 // NVDA at" will happily invent a number, so it is given tools instead and the
 // fetch is forced rather than suggested (see FETCH_FIRST below).
-// A workspace-scoped key carries its workspace already; an org-level key does
-// not, and the API rejects the request outright telling you to name one. The
-// header is only sent when the variable is set, so a scoped key needs no config.
-const anthropic = new Anthropic({
-  defaultHeaders: process.env.ANTHROPIC_WORKSPACE_ID
-    ? { "anthropic-workspace-id": process.env.ANTHROPIC_WORKSPACE_ID }
-    : undefined,
-});
-
-// Chat latency matters more than frontier-model depth here. Haiku is the
-// fastest current Claude model and the deterministic tools still own every
-// market number. An environment override can opt a deployment back into a
-// larger model without changing the client.
-const MODEL = process.env.AI_BOT_MODEL || "claude-haiku-4-5-20251001";
+// Which Claude answers - Bedrock, the Claude API, or none - is decided once in
+// lib/aiProvider.mjs; the tool loop below is the same for all of them.
 const PLAN_MAX_TOKENS = 2048;
 const ANSWER_MAX_TOKENS = 1200;
 
@@ -309,7 +297,8 @@ export async function POST(request) {
       // message the visitor can do nothing with.
       const local = await answerLocally(question).catch(() => null);
 
-      if (!process.env.ANTHROPIC_API_KEY) {
+      const ai = await getAiClient().catch(() => null);
+      if (!ai) {
         const rendered = renderAnswer(local);
 
         // Not an error - the visitor asked something reasonable that this
@@ -332,8 +321,8 @@ export async function POST(request) {
       try {
         // Turn one: which feeds does this question need? Not streamed - it
         // produces tool calls, not prose.
-        const planned = await anthropic.messages.create({
-          model: MODEL,
+        const planned = await ai.client.messages.create({
+          model: ai.model,
           max_tokens: PLAN_MAX_TOKENS,
           system,
           messages,
@@ -368,8 +357,8 @@ export async function POST(request) {
 
         // Turn two: the answer, streamed. Tools are withheld so it writes
         // from what it just got rather than looping for more.
-        const answer = anthropic.messages.stream({
-          model: MODEL,
+        const answer = ai.client.messages.stream({
+          model: ai.model,
           max_tokens: ANSWER_MAX_TOKENS,
           system,
           messages,

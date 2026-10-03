@@ -1,6 +1,6 @@
 # Luna Terminal — Backend & AWS Plan
 
-Status: **in progress** (Phases 0–2 done; Phase 1 front end pending) · Branch: `backend-aws-plan` · Last updated: 2026-10-02
+Status: **in progress** (Phases 0–2 done, Phase 4 started; Phase 1 front end pending) · Branch: `backend-aws-plan` · Last updated: 2026-10-02
 
 This document is the working plan for turning Luna's backend into something
 that runs properly on AWS, persists user data (starting with AI chat
@@ -414,8 +414,17 @@ placeholders — fill in.
 - [ ] DynamoDB-backed `rateLimit`, `memo` L2, game rooms.
 - [ ] S3 `filingStore`; presigned avatar uploads.
 
-### Phase 4 — AI on Bedrock (1–2 days)
-- [ ] Provider abstraction + Bedrock client; IAM policy; prompt caching.
+### Phase 4 — AI on Bedrock (1–2 days) · 🟡 started
+- [x] Provider switch (`lib/aiProvider.mjs`): `AI_PROVIDER=bedrock` uses
+      `AnthropicBedrockMantle` from `@anthropic-ai/bedrock-sdk` (IAM/SigV4,
+      model `anthropic.claude-haiku-4-5`); otherwise the Claude API key;
+      otherwise keyless. The chat route's tool loop is unchanged.
+- [x] SST: web function gets `bedrock-mantle:CreateInference`;
+      `AI_PROVIDER=bedrock` by default in AWS stages.
+- [x] Tests: provider selection, model-id mapping, and a request signed for
+      `bedrock-mantle` in the right region (fake fetch, no AWS call).
+- [ ] Prompt caching on system prompt + tools (explicit `cache_control`
+      breakpoints — Bedrock doesn't take the top-level auto-caching field).
 - [ ] Guardrail; usage metrics; server-side history load by `chatId`.
 - [ ] Async chat titles via DynamoDB Streams.
 

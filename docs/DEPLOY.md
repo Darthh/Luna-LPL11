@@ -91,7 +91,30 @@ until you set it up:
 5. Set the stage secrets once from your machine, as above, using
    `--stage staging` and `--stage production`.
 
-## 2. Database schema (Aurora DSQL)
+## 2. AI: Claude in Amazon Bedrock
+
+AWS stages run the assistant on Bedrock. The web function gets
+`bedrock-mantle:CreateInference`, and `lib/aiProvider.mjs` signs requests with
+the function's role, so no Anthropic key is needed in AWS.
+
+- **Model access.** The default, Claude Haiku 4.5 (`anthropic.claude-haiku-4-5`),
+  is open to every Bedrock account. To use another model, set `AI_BOT_MODEL`
+  when deploying (e.g. `AI_BOT_MODEL=claude-sonnet-5-5 npx sst deploy ...`;
+  the `anthropic.` prefix is added for you). Some models need access granted
+  first under **Bedrock → Model access** in the AWS console.
+- **Region.** The stack is in `us-east-1`, where Bedrock serves Claude.
+- **Quota.** The default is 2M input tokens per minute. RPM limits are set by
+  AWS; request increases through AWS support.
+- **Use the Anthropic API instead:** deploy with `AI_PROVIDER=anthropic` and
+  set the `AnthropicApiKey` secret.
+- **Locally:** `AI_PROVIDER=bedrock` in `.env.local` uses your AWS profile/SSO
+  credentials; that identity needs the same permission.
+
+Bedrock doesn't support every Claude API feature. The assistant uses only tool
+use and streaming, which it does support. Bedrock lacks structured outputs,
+server-side tools such as web search, Batches and the Files API.
+
+## 3. Database schema (Aurora DSQL)
 
 The cluster is created empty. **Phase 3** of the plan adds
 `scripts/dsql-migrate.mjs`, which applies `migrations/*.sql` one statement per
@@ -99,23 +122,23 @@ transaction (a DSQL rule). Until then, account features fail on a fresh stage:
 sign-in, watchlist, alerts and CRM. This includes saving chats, because that
 needs a signed-in user. Public research pages and the AI chat work without it.
 
-## 3. Local development
+## 4. Local development
 
 Nothing changes: `npm run dev` with `.env.local` uses a local Postgres
 `DATABASE_URL` and an in-memory chat store. To develop against real AWS
 resources, `npx sst dev --stage <you>` runs `next dev` with the stage's linked
 resources and environment.
 
-## 4. What runs where
+## 5. What runs where
 
 | Concern | Local (`npm run dev`) | AWS stage |
 |---|---|---|
 | Accounts DB | `DATABASE_URL` (Postgres) | Aurora DSQL via IAM token (`lib/prisma.js`) |
 | Chat history | In-memory (lost on restart) | DynamoDB `LunaData` |
 | Secrets | `.env.local` | `sst secret` (SSM), injected as env vars |
-| AI | `ANTHROPIC_API_KEY` or keyless | Same today; Bedrock via IAM in Phase 4 |
+| AI | `ANTHROPIC_API_KEY`, `AI_PROVIDER=bedrock` with your AWS profile, or keyless | Claude in Amazon Bedrock via the Lambda's IAM role (`AI_PROVIDER=bedrock`) |
 
-## 5. Checks before a deploy
+## 6. Checks before a deploy
 
 ```bash
 npm run lint && npm test && npm run build
