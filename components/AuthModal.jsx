@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { signIn, getProviders } from "next-auth/react";
 import Script from "next/script";
+import "./AuthModal.css";
 
 // Turnstile is optional. A site key only works on the hostnames it was
 // created for in the Cloudflare dashboard; the old hardcoded key belonged to
@@ -12,17 +13,14 @@ import Script from "next/script";
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "";
 
 // Auth.js ships no sign-in/sign-up UI of its own (unlike Clerk), so this
-// modal owns the whole flow: it renders a Google button only if that
-// provider is actually configured (discovered via the /api/auth/providers
-// endpoint, since AUTH_GOOGLE_ID/SECRET are server-only and can't be read
-// from a NEXT_PUBLIC_ var here), and drives email/password against our
+// modal discovers available Google/Apple providers through /api/auth/providers.
+// Unconfigured providers stay disabled; email/password goes through our
 // own /api/auth/register route plus next-auth's credentials sign-in.
 // `reason` is shown above the form when the modal was opened by a feature that
 // needs an account (the watchlist), so it's clear what signing up unlocks.
 export default function AuthModal({ mode: initialMode, reason, onClose }) {
   const [mode, setMode] = useState(initialMode);
-  const [googleEnabled, setGoogleEnabled] = useState(false);
-  const [appleEnabled, setAppleEnabled] = useState(false);
+  const [providers, setProviders] = useState(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -34,10 +32,10 @@ export default function AuthModal({ mode: initialMode, reason, onClose }) {
   const widgetIdRef = useRef(null);
 
   useEffect(() => {
-    getProviders().then((providers) => {
-      setGoogleEnabled(Boolean(providers?.google));
-      setAppleEnabled(Boolean(providers?.apple));
-    });
+    let active = true;
+    getProviders().then((available) => { if (active) setProviders(available || {}); })
+      .catch(() => { if (active) setProviders({}); });
+    return () => { active = false; };
   }, []);
 
   // Turnstile's script scans the DOM for .cf-turnstile once, at load. This
@@ -73,6 +71,19 @@ export default function AuthModal({ mode: initialMode, reason, onClose }) {
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [onClose]);
+
+  async function handleSocialSignIn(provider) {
+    if (busy || !providers?.[provider]) return;
+    setError(null);
+    setBusy(true);
+    try {
+      await signIn(provider, { redirectTo: window.location.href });
+    } catch {
+      setError("Could not start sign-in. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -125,31 +136,22 @@ export default function AuthModal({ mode: initialMode, reason, onClose }) {
         </p>
         {reason && <p className="auth-modal-reason">{reason}</p>}
 
-        {(googleEnabled || appleEnabled) && (
-          <>
-            {googleEnabled && (
-              <button
-                type="button"
-                className="auth-google-btn"
-                onClick={() => signIn("google")}
-              >
-                <GoogleIcon /> Continue with Google
-              </button>
-            )}
-            {appleEnabled && (
-              <button
-                type="button"
-                className="auth-google-btn auth-apple-btn"
-                onClick={() => signIn("apple")}
-              >
-                <AppleIcon /> Continue with Apple
-              </button>
-            )}
-            <div className="auth-modal-divider">
-              <span>or</span>
-            </div>
-          </>
-        )}
+        <div className="auth-social-options">
+          {[{ id: "google", name: "Google", Icon: GoogleIcon }, { id: "apple", name: "Apple", Icon: AppleIcon }].map(({ id, name, Icon }) => (
+            <button
+              key={id}
+              type="button"
+              className="auth-google-btn"
+              disabled={busy || !providers?.[id]}
+              title={!providers ? "Checking availability" : !providers[id] ? `${name} sign-in is currently unavailable` : undefined}
+              onClick={() => handleSocialSignIn(id)}
+            >
+              <Icon /> Continue with {name}
+            </button>
+          ))}
+        </div>
+        {providers && (!providers.google || !providers.apple) && <p className="auth-social-note">{!providers.google && !providers.apple ? "Google and Apple sign-in are" : !providers.google ? "Google sign-in is" : "Apple sign-in is"} currently unavailable. Continue with email below.</p>}
+        <div className="auth-modal-divider"><span>or</span></div>
 
         <form onSubmit={handleSubmit} className="auth-form">
           {mode === "signup" && (
@@ -209,11 +211,7 @@ export default function AuthModal({ mode: initialMode, reason, onClose }) {
 }
 
 function AppleIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">
-      <path d="M16.37 12.6c-.02-2.3 1.88-3.4 1.96-3.46-1.07-1.56-2.73-1.78-3.32-1.8-1.41-.14-2.76.83-3.48.83-.72 0-1.82-.81-3-.79-1.54.02-2.97.9-3.76 2.28-1.61 2.79-.41 6.91 1.15 9.17.77 1.1 1.68 2.34 2.87 2.3 1.15-.05 1.59-.75 2.98-.75s1.78.75 3 .72c1.24-.02 2.03-1.12 2.78-2.23.88-1.28 1.24-2.52 1.26-2.59-.03-.01-2.42-.93-2.44-3.68ZM14.1 5.86c.63-.77 1.06-1.83.94-2.89-.91.04-2.02.61-2.67 1.37-.58.67-1.1 1.76-.96 2.8 1.02.08 2.06-.52 2.69-1.28Z" />
-    </svg>
-  );
+  return <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.05 12.54c.03 3.2 2.81 4.26 2.84 4.28-.02.08-.44 1.52-1.46 3.01-.88 1.28-1.79 2.56-3.23 2.59-1.41.03-1.87-.84-3.48-.84s-2.11.81-3.45.87c-1.39.05-2.45-1.39-3.34-2.66-1.81-2.61-3.19-7.37-1.33-10.59.92-1.6 2.57-2.61 4.36-2.64 1.36-.03 2.65.92 3.48.92.83 0 2.38-1.14 4.01-.98.68.03 2.61.27 3.85 2.08-.1.06-2.3 1.34-2.25 3.96ZM14.42 4.74c.74-.9 1.23-2.15 1.09-3.39-1.07.04-2.37.71-3.14 1.61-.69.8-1.29 2.08-1.13 3.3 1.19.09 2.41-.61 3.18-1.52Z" /></svg>;
 }
 
 function GoogleIcon() {

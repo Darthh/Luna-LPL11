@@ -5,7 +5,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { authConfig, googleEnabled, appleEnabled } from "@/auth.config";
 
-// Google needs OAuth credentials the user must create themselves (see
+// Google and Apple need OAuth applications configured by the site owner (see
 // README "Accounts" section). Whether it is registered is decided in
 // auth.config.js, which middleware shares; re-exported here so the existing
 // importers of "@/auth" keep working.
@@ -33,7 +33,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!email || !password) return null;
 
         const user = await prisma.user.findUnique({ where: { email } });
-        if (!user?.passwordHash) return null; // Google-only account, no password set
+        if (!user?.passwordHash) return null; // OAuth-only account, no password set
 
         const valid = await bcrypt.compare(password, user.passwordHash);
         if (!valid) return null;
