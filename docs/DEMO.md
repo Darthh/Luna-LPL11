@@ -109,22 +109,38 @@ same tool code the AgentCore agent runs."
 
 ### The AWS slide (for the deck)
 
-**Title:** Built serverless on AWS
+The AWS judges rank "pick each service because your idea needs it, not to
+fill a list" first. So the slide follows the demo: each service is tied to a
+step the judges just watched.
 
-- **Amazon Bedrock:** 5 models (GPT-5.6 Sol, Claude Opus 5, Llama 4, Qwen3,
-  Gemma 4), all with the same live-data tools. IAM-scoped, no API keys.
-- **Bedrock AgentCore:** runs the tool-using agent, with tools called in
-  parallel and answers streamed.
-- **S3 Vectors + Titan embeddings:** search the client's documents by
-  meaning, with cited pages.
-- **Lambda durable functions + Bedrock Data Automation:** PDF extraction
-  and background reports.
-- **Aurora DSQL + DynamoDB:** accounts, watchlists, chat history synced
-  across devices. Serverless, IAM auth, no passwords.
-- **CloudFront + Lambda, deployed with SST:** one command reproduces it;
-  CloudWatch tracks latency, tokens and errors per model.
+**Title:** How it's built on AWS
 
-Footer line: *No servers to manage, no AI keys, least-privilege IAM.*
+| Demo step | AWS service | Why this one |
+|---|---|---|
+| Upload the client packet | **Bedrock Data Automation** + **Lambda durable functions** | Extracting text from PDFs is slow: a checkpointed background job keeps the chat responsive and resumes after a failure |
+| "Summarize this packet" (cited pages) | **S3 Vectors** + **Titan embeddings** | Finds the right page by meaning; storage is cheap and every query is filtered to the owner's documents |
+| Questions with live prices | **Bedrock AgentCore Runtime** + **Bedrock** models | A managed runtime for the tool-using agent; tools run in parallel; switch between 5 models with no code change |
+| "Should they sell?" | System prompt; a **Bedrock Guardrail** is built behind a switch | It informs, it doesn't advise. Say the Guardrail is optional unless you turn it on for the demo |
+| Signed in, history on any device | **Aurora DSQL** + **DynamoDB** | Serverless, IAM auth with no database password; atomic counters give rate limits shared by every Lambda |
+| The site itself | **CloudFront + Lambda** (deployed with **SST**, infrastructure as code) | Scales to zero between uses; one command rebuilds it |
+
+**Built right** (the footer, or say it aloud):
+- **No hard-coded keys:** the Lambda's IAM role calls only the 5 models.
+- **Graceful errors:** a failed call is retried, then a backup model answers, and the real cause is logged.
+- **Measured:** CloudWatch records latency, tokens and errors for every model.
+
+Leave out services the demo doesn't show (S3 Tables, MCP) unless asked.
+
+### Workshop account rules that affect the demo
+
+- **About 1 Bedrock call per second.** Ask one question at a time and let
+  each answer finish. Don't run `smoke:site` or `check:bedrock` during the
+  presentation. A throttled call falls back to the backup model, which
+  still answers, just more slowly.
+- **Made-up client data only.** The Harper packet is fictional and says so on
+  every page. Prices come from public market quotes.
+- **The account is deleted after the event.** Record the demo video
+  beforehand; the rubric strongly recommends it anyway.
 
 ### Alternative: quick feature tour (no documents, about 3 minutes)
 
