@@ -32,7 +32,7 @@ test("streams split UTF-8 and a final line without newline with bounded clean hi
     assert.equal(body.model, "test");
     assert.equal(body.stream, true);
     assert.equal(body.messages.length, 40);
-    assert.match(body.messages[0].content, /no live market/);
+    assert.match(body.messages[0].content, /no (?:independent )?live market/);
     assert.equal(body.messages.some(m => m.content === "failed"), false);
     return new Response(new ReadableStream({ start(controller) {
       for (const byte of bytes) controller.enqueue(Uint8Array.of(byte));
