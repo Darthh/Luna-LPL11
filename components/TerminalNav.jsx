@@ -153,7 +153,7 @@ export default function TerminalNav() {
   // Highlighted only when the panel is actually on the dashboard - and only on
   // the dashboard page, since that is the only place the dashboard exists.
   const onDashboard = (id) => pathnameIsHome && dashboard.has(id);
-  const visibleChats = chatQuery.trim() ? searchChats(allChats, chatQuery) : allChats.slice(0, 3);
+  const visibleChats = chatQuery.trim() ? searchChats(allChats, chatQuery) : allChats.slice(0, 5);
 
   const removeChat = useCallback((chat) => {
     if (!window.confirm(`Delete “${chat.title}”? This cannot be undone.`)) return;
