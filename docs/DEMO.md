@@ -70,7 +70,8 @@ stack, and GitHub Actions can deploy over OIDC with no stored AWS keys.
 3. **Grounding (30 s).** Ask "What is AAPL trading at?" and point at the
    retrieval date. The model cannot invent the number.
 4. **Research depth (30 s).** Follow a link to `/stock/NVDA`, then
-   `/hedge-funds` for 13F holdings and `/supply-chain` for relationships.
+   `/13Filings` for 13F holdings, `/supply-chain` for relationships and
+   **Reports** for exportable client reports.
 5. **Documents (30 s).** In the chat, expand **Documents & research**, upload
    a PDF, wait for **ready**, select it and ask about it. The answer cites
    chunks. Or choose **Research in background** for a saved report.
