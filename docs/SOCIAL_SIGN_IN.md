@@ -3,7 +3,7 @@
 The sign-up and sign-in modals offer both providers. Auth.js creates the account
 through the existing Prisma adapter on a user's first successful OAuth sign-in.
 Email/password registration remains available. Unconfigured providers are shown
-disabled with an availability message; no placeholder credentials are used.
+disabled until configured; no placeholder credentials are used.
 The app discovers configured providers through `/api/auth/providers`.
 
 Both flows require a working accounts database and `AUTH_SECRET`. Keep all

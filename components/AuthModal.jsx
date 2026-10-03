@@ -21,7 +21,6 @@ const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "";
 export default function AuthModal({ mode: initialMode, reason, onClose }) {
   const [mode, setMode] = useState(initialMode);
   const [providers, setProviders] = useState(null);
-  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
@@ -94,7 +93,7 @@ export default function AuthModal({ mode: initialMode, reason, onClose }) {
         const res = await fetch("/api/auth/register", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, email, password, turnstileToken }),
+          body: JSON.stringify({ email, password, turnstileToken }),
         });
         const body = await res.json();
         if (!res.ok) {
@@ -131,35 +130,10 @@ export default function AuthModal({ mode: initialMode, reason, onClose }) {
           ×
         </button>
         <h2>{mode === "signup" ? "Create your account" : "Sign in"}</h2>
-        <p className="auth-modal-sub">
-          {mode === "signup" ? "Get a higher API quota and save your preferences." : "Welcome back."}
-        </p>
         {reason && <p className="auth-modal-reason">{reason}</p>}
 
-        <div className="auth-social-options">
-          {[{ id: "google", name: "Google", Icon: GoogleIcon }, { id: "apple", name: "Apple", Icon: AppleIcon }].map(({ id, name, Icon }) => (
-            <button
-              key={id}
-              type="button"
-              className="auth-google-btn"
-              disabled={busy || !providers?.[id]}
-              title={!providers ? "Checking availability" : !providers[id] ? `${name} sign-in is currently unavailable` : undefined}
-              onClick={() => handleSocialSignIn(id)}
-            >
-              <Icon /> Continue with {name}
-            </button>
-          ))}
-        </div>
-        {providers && (!providers.google || !providers.apple) && <p className="auth-social-note">{!providers.google && !providers.apple ? "Google and Apple sign-in are" : !providers.google ? "Google sign-in is" : "Apple sign-in is"} currently unavailable. Continue with email below.</p>}
-        <div className="auth-modal-divider"><span>or</span></div>
-
         <form onSubmit={handleSubmit} className="auth-form">
-          {mode === "signup" && (
-            <label>
-              Name
-              <input type="text" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
-            </label>
-          )}
+          <strong className="auth-welcome">Welcome back</strong>
           <label>
             Email
             <input
@@ -187,6 +161,22 @@ export default function AuthModal({ mode: initialMode, reason, onClose }) {
             {busy ? "Please wait…" : mode === "signup" ? "Create account" : "Sign in"}
           </button>
         </form>
+
+        <div className="auth-modal-divider"><span>or</span></div>
+        <div className="auth-social-options">
+          {[{ id: "google", name: "Google", Icon: GoogleIcon }, { id: "apple", name: "Apple", Icon: AppleIcon }].map(({ id, name, Icon }) => (
+            <button
+              key={id}
+              type="button"
+              className="auth-google-btn"
+              disabled={busy || !providers?.[id]}
+              title={!providers ? "Checking availability" : !providers[id] ? `${name} sign-in is currently unavailable` : undefined}
+              onClick={() => handleSocialSignIn(id)}
+            >
+              <Icon /> Sign in with {name}
+            </button>
+          ))}
+        </div>
 
         <div className="auth-modal-switch">
           {mode === "signup" ? (
