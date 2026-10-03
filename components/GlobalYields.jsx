@@ -172,7 +172,7 @@ export default function GlobalYields() {
           y: {
             position: "right",
             grid: { color: "rgba(139,147,163,0.12)" },
-            ticks: { color: soft, maxTicksLimit: 8, callback: (v) => `${v.toFixed(2)}%` },
+            ticks: { color: soft, maxTicksLimit: 8, callback: (v) => Number(v.toFixed(2)) === 0 ? null : `${v.toFixed(2)}%` },
           },
         },
       },

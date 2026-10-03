@@ -5,19 +5,11 @@ import { useEffect, useRef, useState } from "react";
 import "./AIWorkspace.css";
 import { researchMessages } from "@/lib/chatResearch.mjs";
 import LunaAILogo from "@/components/LunaAILogo";
-import { canUseOllama, ollamaModels, ollamaChat } from "@/lib/ollamaClient.mjs";
+import ChatSuggestions from "@/components/ChatSuggestions";
+import { ollamaModels, ollamaChat } from "@/lib/ollamaClient.mjs";
 import { readChats, saveChat } from "@/lib/chatHistory";
-import { STOCK_RANGES, buildStockCard, chartGeometry, stockLookupForMessage } from "@/lib/chatStockCard.mjs";
-
-const SUGGESTIONS = [
-  ["Read the market", "What is market sentiment today?"],
-  ["Research a stock", "Compare NVDA and SPY over the last year."],
-  ["Find a Luna tool", "Where can I review Berkshire Hathaway's holdings?"],
-];
-
-const HOSTED_MODELS = [
-  { id: "luna-finance", label: "Luna Finance", detail: "Live market tools" },
-];
+import { STOCK_RANGES, chartGeometry, stockLookupsForMessages, stockLookupsForAnswer, loadStockCards } from "@/lib/chatStockCard.mjs";
+import { HOSTED_MODELS, DEFAULT_HOSTED_MODEL } from "@/lib/hostedModels.mjs";
 
 const LOCAL_KEY = "lunaLocalModel";
 const LOCAL_SECRET_KEY = "lunaLocalModelKey";
@@ -232,12 +224,11 @@ export default function AIWorkspace({ chatId = null }) {
   const modelWindow = useRef(null);
   const modelTrigger = useRef(null);
   const [mode, setMode] = useState("hosted");
-  const [ollamaAvailable, setOllamaAvailable] = useState(false);
   const [installedModels, setInstalledModels] = useState([]);
   const [ollamaModel, setOllamaModel] = useState("");
   const [modelStatus, setModelStatus] = useState("");
   const [refreshing, setRefreshing] = useState(false);
-  const [hostedModel, setHostedModel] = useState(HOSTED_MODELS[0].id);
+  const [hostedModel, setHostedModel] = useState(DEFAULT_HOSTED_MODEL);
   const [local, setLocal] = useState({ endpoint: "http://localhost:11434/v1", model: "qwen3.8:27b", key: "", remember: false });
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [messages, setMessages] = useState([]);
@@ -255,6 +246,10 @@ export default function AIWorkspace({ chatId = null }) {
     setMessages(chat?.messages || []);
     setInput("");
     setError("");
+    if (!chatId) {
+      setMode("hosted");
+      setHostedModel(DEFAULT_HOSTED_MODEL);
+    }
   }, [chatId]);
 
   useEffect(() => {
@@ -263,20 +258,21 @@ export default function AIWorkspace({ chatId = null }) {
       setMessages([]);
       setInput("");
       setError("");
+      setMode("hosted");
+      setHostedModel(DEFAULT_HOSTED_MODEL);
+      setSettingsOpen(false);
     };
     window.addEventListener("luna-new-chat", reset);
     return () => window.removeEventListener("luna-new-chat", reset);
   }, []);
 
   useEffect(() => {
-    // This connection targets the browser's computer, not the Luna server.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setOllamaAvailable(canUseOllama());
     try {
       const saved = JSON.parse(localStorage.getItem(LOCAL_KEY) || "null");
       const key = sessionStorage.getItem(LOCAL_SECRET_KEY) || "";
       // Browser storage does not exist during the server render; mirror it
       // once after hydration, as DashboardProvider does for the panel layout.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (saved) setLocal((current) => ({ ...current, ...saved, key }));
     } catch {}
   }, []);
@@ -336,24 +332,8 @@ export default function AIWorkspace({ chatId = null }) {
   async function send(value) {
     const question = value.trim();
     if (!question || busy) return;
-    const lookup = stockLookupForMessage(question);
-    const stockCardPromise = lookup
-      ? (async () => {
-          let symbol = lookup.symbol;
-          if (!symbol) {
-            const searchResponse = await fetch(`/api/stock-search?q=${encodeURIComponent(lookup.query)}`);
-            if (!searchResponse.ok) return null;
-            symbol = (await searchResponse.json()).results?.[0]?.symbol;
-          }
-          if (!symbol) return null;
-          const [profileResponse, chartResponse] = await Promise.all([
-            fetch(`/api/stock-profile?symbol=${encodeURIComponent(symbol)}`),
-            fetch(`/api/stock-chart?symbol=${encodeURIComponent(symbol)}&range=1d`),
-          ]);
-          if (!profileResponse.ok || !chartResponse.ok) return null;
-          return buildStockCard(await profileResponse.json(), await chartResponse.json());
-        })().catch(() => null)
-      : Promise.resolve(null);
+    const lookups = stockLookupsForMessages(question);
+    const stockCardsPromise = loadStockCards(lookups);
     const history = [...messages.filter((message) => !message.error), { role: "user", content: question }];
     const conversationId = activeChatId.current || crypto.randomUUID();
     activeChatId.current = conversationId;
@@ -368,11 +348,12 @@ export default function AIWorkspace({ chatId = null }) {
       { ...current.at(-1), role: "assistant", content, sources, model: activeLabel },
     ]);
 
-    stockCardPromise.then((stockCard) => {
-      if (!stockCard) return;
+    let pending = true;
+    stockCardsPromise.then((stockCards) => {
+      if (!pending || activeChatId.current !== conversationId || !stockCards.length) return;
       setMessages((current) => [
         ...current.slice(0, -1),
-        { ...current.at(-1), stockCard },
+        { ...current.at(-1), stockCards },
       ]);
     });
 
@@ -414,8 +395,12 @@ export default function AIWorkspace({ chatId = null }) {
         answer = await readLocalResponse(response, update);
       }
       if (!answer?.trim()) throw new Error("The model returned an empty answer.");
-      const stockCard = await stockCardPromise;
-      const assistantMessage = { role: "assistant", content: answer, sources, model: activeLabel, ...(stockCard ? { stockCard } : {}) };
+      const stockCards = await stockCardsPromise;
+      const answerLookups = stockLookupsForAnswer(answer).filter(lookup =>
+        !lookups.some(existing => existing.symbol === lookup.symbol) &&
+        !stockCards.some(card => card.symbol === lookup.symbol));
+      stockCards.push(...await loadStockCards(answerLookups));
+      const assistantMessage = { role: "assistant", content: answer, sources, model: activeLabel, stockCards };
       setMessages([...history, assistantMessage]);
       saveChat({
         id: conversationId,
@@ -425,8 +410,10 @@ export default function AIWorkspace({ chatId = null }) {
     } catch (reason) {
       const message = reason instanceof Error ? reason.message : String(reason);
       setError(message);
-      setMessages((current) => [...current.slice(0, -1), { role: "assistant", content: message, error: true }]);
+      const stockCards = await stockCardsPromise;
+      setMessages((current) => [...current.slice(0, -1), { role: "assistant", content: message, error: true, stockCards }]);
     } finally {
+      pending = false;
       setSearching(false);
       setBusy(false);
     }
@@ -451,7 +438,9 @@ export default function AIWorkspace({ chatId = null }) {
             {messages.map((message, index) => (
               <article key={index} className={`ai-message ai-message-${message.role}${message.error ? " is-error" : ""}`}>
                 {message.role === "assistant" && <div className="ai-answer-label"><LunaAILogo /><strong>{message.model || activeLabel}</strong></div>}
-                {message.stockCard && <StockQuoteCard card={message.stockCard} />}
+                {(message.stockCards || (message.stockCard ? [message.stockCard] : [])).map(card => card.unavailable
+                  ? <p key={card.symbol}>Chart data is unavailable for <Link href={`/stock/${encodeURIComponent(card.symbol)}`}>{card.symbol}</Link>. Open the stock page to try again.</p>
+                  : <StockQuoteCard key={card.symbol} card={card} />)}
                 {message.content ? <Rich text={message.content} /> : <span className="ai-thinking">{searching ? "Searching the web" : "Thinking"}</span>}
                 {message.sources?.length > 0 && <div className="ai-sources" aria-label="Web sources"><span>Sources</span>{message.sources.map((source, i) => <a key={source.url} href={source.url} target="_blank" rel="noopener noreferrer">{i + 1}. {source.title}</a>)}</div>}
               </article>
@@ -488,16 +477,22 @@ export default function AIWorkspace({ chatId = null }) {
         {settingsOpen && (
           <div ref={modelWindow} id="ai-model-window" className="ai-settings" role="dialog" aria-label="Choose a model">
             <div className="ai-mode-switch" role="group" aria-label="AI connection">
-              <button type="button" disabled={busy} className={mode === "hosted" ? "is-active" : ""} onClick={() => switchMode("hosted")}>Luna hosted</button>
-              {ollamaAvailable && <button type="button" disabled={busy} className={mode === "ollama" ? "is-active" : ""} onClick={() => switchMode("ollama")}>Ollama</button>}
+              <button type="button" disabled={busy} aria-pressed={mode === "hosted"} className={mode === "hosted" ? "is-active" : ""} onClick={() => switchMode("hosted")}>AI model</button>
+              <button type="button" disabled={busy} aria-pressed={mode !== "hosted"} className={mode !== "hosted" ? "is-active" : ""} onClick={() => switchMode("ollama")}>Local hosted</button>
             </div>
             <div className="ai-settings-head">
               <div>
-                <strong>{mode === "hosted" ? "Luna hosted model" : "Local model connection"}</strong>
+                <strong>{mode === "hosted" ? "AI model" : "Local hosted model"}</strong>
                 <p>{mode === "hosted" ? "Uses Luna's configured AI provider and live market tools." : mode === "ollama" ? "Uses Ollama on this computer. No API key or Luna account required; chat is sent directly to Ollama." : "Your endpoint and key stay in this browser and are sent only to the endpoint below."}</p>
               </div>
               <button type="button" onClick={() => setSettingsOpen(false)} aria-label="Close connection settings">×</button>
             </div>
+            {mode !== "hosted" && (
+              <div className="ai-mode-switch" role="group" aria-label="Local connection type">
+                <button type="button" className={mode === "ollama" ? "is-active" : ""} onClick={() => switchMode("ollama")}>Ollama</button>
+                <button type="button" className={mode === "local" ? "is-active" : ""} onClick={() => switchMode("local")}>Custom endpoint</button>
+              </div>
+            )}
             {mode === "hosted" ? (
               <div className="ai-model-grid">
                 {HOSTED_MODELS.map((model) => (
@@ -533,12 +528,10 @@ export default function AIWorkspace({ chatId = null }) {
         </form>
 
         {!messages.length && (
-          <div className="ai-suggestions">
-            <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" aria-hidden="true"><path d="m13 2-9 12h7l-1 8 10-13h-7l1-7Z"/></svg> Suggested</span>
-            {SUGGESTIONS.map(([title, prompt]) => (
-              <button key={title} type="button" onClick={() => send(prompt)}><strong>{title}</strong><small>{prompt}</small></button>
-            ))}
-          </div>
+          <ChatSuggestions onChoose={prompt => {
+            setInput(prompt);
+            document.querySelector('.ai-composer textarea')?.focus();
+          }} />
         )}
         {error && <p className="ai-error" role="alert">{error}</p>}
       </div>
