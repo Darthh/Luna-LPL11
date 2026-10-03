@@ -537,10 +537,7 @@ export default function AIWorkspace({ chatId = null }) {
         </form>
 
         {!messages.length && (
-          <ChatSuggestions onChoose={prompt => {
-            setInput(prompt);
-            document.querySelector('.ai-composer textarea')?.focus();
-          }} />
+          <ChatSuggestions onChoose={send} />
         )}
         {error && <p className="ai-error" role="alert">{error}</p>}
       </div>
