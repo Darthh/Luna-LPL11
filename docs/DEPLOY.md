@@ -144,10 +144,24 @@ db:migrate`). That's how the schema is tested: migrated with no foreign keys,
 it matches `prisma/schema.prisma`, and sign-up, sign-in, the watchlist and
 saved chats work against it.
 
-## 4. Deploy from GitHub Actions (OIDC, no stored keys)
+## 4. Auto-deploy from GitHub Actions (OIDC, no stored keys)
 
-`.github/workflows/deploy.yml` deploys `main` → `staging` and tags `v*` →
-`production`, and can be run by hand for any stage. It is skipped until set up:
+`.github/workflows/deploy.yml` deploys automatically:
+
+- **Every push to `main` that passes Web CI** (lint, tests, build) deploys to
+  the stage in the repository variable `DEPLOY_STAGE` (default `staging`). It
+  deploys the exact commit CI checked, builds the AgentCore bundle, runs
+  `sst deploy`, then `npm run smoke:site` against the new URL.
+- A `v*` tag deploys `production`. **Actions → Deploy to AWS → Run workflow**
+  deploys any stage by hand.
+- Deploys to the same stage queue rather than overlap.
+- `data-test` and `production` refuse to deploy unless `LUNA_DATA=true`,
+  because a deploy without it deletes their database, table and bucket.
+
+API keys don't go in GitHub: the workflow deploys with the stage's existing
+`sst secret` values, stored in the AWS account (SSM). Set them as in §1.
+
+The job is skipped until it's set up:
 
 1. Create the GitHub OIDC provider in IAM (once per account):
    ```bash
@@ -175,15 +189,24 @@ saved chats work against it.
    aws iam create-role --role-name luna-github-deploy --assume-role-policy-document file://trust.json
    aws iam attach-role-policy --role-name luna-github-deploy \
      --policy-arn arn:aws:iam::aws:policy/AdministratorAccess
+   aws iam get-role --role-name luna-github-deploy --query Role.Arn --output text
    ```
    SST creates IAM roles, CloudFront distributions and more, so it starts
-   with admin. Narrow the policy once the resource set is stable. Workshop
-   accounts usually can't create IAM roles; deploy from a laptop there.
+   with admin. Narrow the policy once the resource set is stable. A workshop
+   account may refuse these IAM calls (`AccessDenied`). If so, auto-deploy
+   isn't possible there: keep deploying from a laptop.
 3. In GitHub, go to **Settings → Secrets and variables → Actions → Variables**
-   and add `AWS_DEPLOY_ROLE_ARN`. Optional variables: `LUNA_DATA` (`true` for
-   the full app), `ALERT_FROM_EMAIL`, `LUNA_DOMAIN`.
-4. Create GitHub **environments** named `staging` and `production`. Add
-   required reviewers to `production` if you want a manual gate.
+   and add:
+
+   | Variable | Value |
+   |---|---|
+   | `AWS_DEPLOY_ROLE_ARN` | The ARN printed in step 2 |
+   | `DEPLOY_STAGE` | e.g. `data-test` |
+   | `LUNA_DATA` | `true` for the full app (required for `data-test`) |
+   | `ALERT_FROM_EMAIL`, `LUNA_DOMAIN`, `TURNSTILE_SITE_KEY` | Optional |
+4. Create a GitHub **environment** with the same name as `DEPLOY_STAGE` (and
+   `production`). Add required reviewers to `production` if you want a manual
+   gate.
 
 ## 5. Local development
 

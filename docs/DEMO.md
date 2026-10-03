@@ -77,6 +77,11 @@ stack, and GitHub Actions can deploy over OIDC with no stored AWS keys.
 6. **AWS view (30 s).** Show `sst.config.ts`: IAM scoped to five models, no
    keys. If deployed with `LUNA_DATA=true`, sign in on two browsers and show
    a chat saved on one appearing on the other.
+7. **Luna as an MCP server (30 s).** In Claude Desktop (Settings → Connectors
+   → add `https://<site>/api/mcp`), ask "What's NVDA at, and where on Luna can
+   I see its supply chain?" Claude calls Luna's tools on AWS and links the
+   page. Same tool code as the AgentCore agent, open to any MCP client
+   (docs/MCP.md).
 
 ## Before presenting
 
@@ -91,18 +96,20 @@ stack, and GitHub Actions can deploy over OIDC with no stored AWS keys.
 - Keep a screen recording of the full script as a backup in case the network
   fails.
 
-## Built and verified, not yet deployed
+## Deployed with the full data stack
 
-These are tested (with local databases and emulators) and deploy with
-`LUNA_DATA=true`, but haven't run in the workshop account:
-- Saved chats synced across devices: tested in two real browsers.
-- Accounts on Aurora DSQL: the migration runner (`npm run db:migrate:dsql`)
-  was tested on PostgreSQL 16 with DSQL's constraints.
-- Shared rate limits on DynamoDB: tested with concurrent requests.
+Stage `data-test` (`LUNA_DATA=true`) runs everything in the workshop account:
+DynamoDB, S3 and Aurora DSQL alongside the AI services. The DSQL migration
+applied all 34 statements, and `npm run smoke:site` passed every check, with
+all five models answering through AgentCore. Sign-up, the watchlist and
+cross-device chat history still need a check in the browser before presenting.
 
 ## Next (post-hackathon)
 
 - Ingest SEC 10-K risk factors into the S3 Vectors index, so "which companies
   mention supply-chain risk?" works without uploads.
-- AgentCore Memory for long-term user preferences; prompt caching; Bedrock
-  Guardrails; per-model cost metrics in CloudWatch.
+- AgentCore Memory for long-term user preferences.
+- Turn on the built switches after testing them: Bedrock Guardrails
+  (`LUNA_GUARDRAIL`) and prompt caching (`BEDROCK_PROMPT_CACHE`).
+- AgentCore Gateway in front of the MCP tools, with sign-in, so per-user tools
+  can be exposed too (docs/MCP.md).

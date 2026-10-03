@@ -5,7 +5,7 @@
 // implements just renders nothing. Neither throws, so neither shows up in a
 // build.
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import {
@@ -19,7 +19,12 @@ import {
 } from "../lib/appearance.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const css = readFileSync(join(root, "app/globals.css"), "utf8");
+// Palettes live in globals.css or in a theme's own stylesheet beside it
+// (app/padres.css); the root layout imports both.
+const css = readdirSync(join(root, "app"))
+  .filter((f) => f.endsWith(".css"))
+  .map((f) => readFileSync(join(root, "app", f), "utf8"))
+  .join("\n");
 const effects = readFileSync(join(root, "components/BackgroundEffects.jsx"), "utf8");
 
 // The one light theme is the bare :root block, so it has no selector of its own.
