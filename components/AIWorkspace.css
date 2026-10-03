@@ -109,6 +109,17 @@ html[data-layout="terminal"] #content .ai-workspace .ai-welcome h2 { font-size: 
 .ai-stock-ranges button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .ai-stock-chart { display: block; width: 100%; height: 132px; padding: 0 15px; transition: opacity 140ms var(--ease-out); }
 .ai-stock-chart.is-loading { opacity: 0.42; }
+.ai-stock-chart-wrap { position: relative; }
+.ai-stock-chart { cursor: crosshair; }
+.ai-stock-hover-marker { pointer-events: none; }
+.ai-stock-tooltip { position: absolute; top: 6px; left: 20px; max-width: calc(100% - 40px); padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--card-bg, var(--bg)); color: var(--text); font-size: 11px; pointer-events: none; box-shadow: 0 4px 12px #0002; }
+.ai-stock-tooltip.is-right { left: auto; right: 20px; }
+.ai-stock-tooltip > div { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.ai-stock-tooltip > div + div { margin-top: 4px; }
+.ai-stock-tooltip strong { font-size: 14px; }
+.ai-stock-tooltip span { color: var(--text-soft); }
+.ai-stock-tooltip .positive { color: var(--ai-stock-up); }
+.ai-stock-tooltip .negative { color: var(--ai-stock-down); }
 .ai-stock-gridline { stroke: var(--border); stroke-width: 1; stroke-dasharray: 3 5; }
 .ai-stock-stats {
   display: grid;
