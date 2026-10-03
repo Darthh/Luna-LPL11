@@ -13,6 +13,7 @@ import {
 } from "chart.js";
 import { Line } from "react-chartjs-2";
 import TickerInput from "@/components/TickerInput";
+import "./LotsOfCharts.css";
 import { useTheme } from "@/components/PageChrome";
 import { cssVar } from "@/lib/cssVar";
 import { hideBrokenLogo, logoUrl } from "@/lib/companyLogo";
@@ -108,11 +109,16 @@ export default function LotsOfCharts() {
       )}
 
       <div className="loc-grid">
-        {symbols.map((symbol) => (
+        {symbols.map((symbol, index) => (
           <ChartTile
             key={symbol}
             symbol={symbol}
             range={range}
+            onReplace={(next) => {
+              if (next !== symbol && symbols.includes(next)) return false;
+              setSymbols((prev) => prev.map((current, slot) => slot === index ? next : current));
+              return true;
+            }}
             onRemove={() => setSymbols((prev) => prev.filter((s) => s !== symbol))}
           />
         ))}
@@ -121,8 +127,19 @@ export default function LotsOfCharts() {
   );
 }
 
-function ChartTile({ symbol, range, onRemove }) {
+function ChartTile({ symbol, range, onRemove, onReplace }) {
   const theme = useTheme();
+  const [search, setSearch] = useState("");
+  const [searchError, setSearchError] = useState("");
+
+  function replace(next) {
+    if (!onReplace(next)) {
+      setSearchError(`${next} is already on this screen.`);
+      return;
+    }
+    setSearch("");
+    setSearchError("");
+  }
   // The result carries the request it answers, so a result that does not match
   // what is being asked for now is what "loading" means - no separate flag to
   // fall out of step with the fetch.
@@ -252,6 +269,15 @@ function ChartTile({ symbol, range, onRemove }) {
             <span className={stats.up ? "up" : "down"}>{pct(stats.changePct)}</span>
           </>
         )}
+        <div className="loc-replace">
+          <TickerInput
+            value={search}
+            label={`Replace ${symbol} chart`}
+            placeholder="Search stock"
+            onChange={(value) => { setSearch(value); setSearchError(""); }}
+            onPick={replace}
+          />
+        </div>
         <button type="button" onClick={onRemove} aria-label={`Remove ${symbol}`}>
           <svg viewBox="0 0 24 24" width="13" height="13" fill="none" aria-hidden="true">
             <path
@@ -263,6 +289,7 @@ function ChartTile({ symbol, range, onRemove }) {
           </svg>
         </button>
       </header>
+      {searchError && <p className="loc-replace-error" role="alert">{searchError}</p>}
       <div className="loc-chart">
         {error ? (
           <div className="stock-chart-empty">{error}</div>
