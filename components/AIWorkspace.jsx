@@ -7,6 +7,7 @@ import { researchMessages } from "@/lib/chatResearch.mjs";
 import LunaAILogo from "@/components/LunaAILogo";
 import ChatSuggestions from "@/components/ChatSuggestions";
 import ChatGreeting from "@/components/ChatGreeting";
+import { memoryFromChats, memoryMessages } from "@/lib/chatMemory.mjs";
 import { ollamaModels, ollamaChat } from "@/lib/ollamaClient.mjs";
 import { readChats, saveChat } from "@/lib/chatHistory";
 import { STOCK_RANGES, chartGeometry, stockLookupsForMessages, stockLookupsForAnswer, loadStockCards, isChatStockSymbolAllowed } from "@/lib/chatStockCard.mjs";
@@ -240,6 +241,7 @@ export default function AIWorkspace({ chatId = null }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [documentIds, setDocumentIds] = useState([]);
+  const [memoryScope, setMemoryScope] = useState(null);
   const scroller = useRef(null);
   const activeChatId = useRef(chatId);
 
@@ -342,6 +344,8 @@ export default function AIWorkspace({ chatId = null }) {
     const history = [...messages.filter((message) => !message.error), { role: "user", content: question }];
     const conversationId = activeChatId.current || crypto.randomUUID();
     activeChatId.current = conversationId;
+    // Persist the user's words even if the model request fails.
+    saveChat({ id: conversationId, title: history[0]?.content.slice(0, 60) || "Chat", messages: history });
     setInput("");
     setError("");
     setBusy(true);
@@ -365,6 +369,26 @@ export default function AIWorkspace({ chatId = null }) {
     try {
       let answer;
       let outgoing = history.map(({ role, content }) => ({ role, content }));
+      const excluded = history.slice(-12).filter((message) => message.role === "user").map((message) => message.content);
+      try {
+        const response = await fetch("/api/chat-memory", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question, excluded }),
+          signal: AbortSignal.timeout(8000),
+        });
+        if (response.ok) {
+          const { memories } = await response.json();
+          outgoing = memoryMessages(outgoing, memories);
+          setMemoryScope("account");
+        } else if (response.status === 401) {
+          outgoing = memoryMessages(outgoing, memoryFromChats(readChats(), question, excluded));
+          setMemoryScope("browser");
+        } else {
+          setMemoryScope("unavailable");
+        }
+      } catch {
+        setMemoryScope("unavailable");
+      }
       if (webSearch) {
         setSearching(true);
         const response = await fetch("/api/ai-research", {
@@ -458,6 +482,7 @@ export default function AIWorkspace({ chatId = null }) {
         )}
 
         <form className="ai-composer" onSubmit={(event) => { event.preventDefault(); send(input); }}>
+          {memoryScope && <span className="ai-memory-status" role="status" title="Luna recalls relevant user messages from saved chats. Delete a saved chat to remove it from memory.">{memoryScope === "account" ? "Account memory on" : memoryScope === "browser" ? "Browser memory on · sign in to sync" : "Memory temporarily unavailable"}</span>}
           <textarea
             value={input}
             onChange={(event) => setInput(event.target.value)}
