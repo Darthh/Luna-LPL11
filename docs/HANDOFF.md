@@ -119,7 +119,18 @@ roadmap.
 - Fixed CI. `test-appearance` didn't know about `app/padres.css`, and that
   failure blocked every run.
 - Added auto-deploy after CI.
-- Added Sign in with Apple next to Google.
+- Added Sign in with Apple next to Google (on hold: needs a paid developer
+  account).
+
+**2026-10-03, demo stage up to date.**
+- Set the six data API keys (Finnhub, Polygon, Alpha Vantage, Exa, Twelve
+  Data, Tradier) as SST secrets on `data-test`, read from `.env.local`
+  without printing them.
+- Redeployed `data-test` from `main` (PR #9) with `LUNA_DATA=true`.
+- Smoke test passed 18/18: 10 pages, 2 APIs, MCP, and all five models
+  answering with live data.
+- Checked that the keys are live: `/api/research/catalysts` now reports
+  `configured: true` with Finnhub news.
 
 ## 4. Current state
 
@@ -131,15 +142,19 @@ roadmap.
 | DSQL endpoint | `xrud77dz6yqyk2nqiutq2i6mfu.dsql.us-east-1.on.aws` |
 | DynamoDB table | `luna-ai-preview-data-test-LunaDataTable-evohbxsr` |
 | Local AWS profile | `op1810-sst` (credential_process wrapper around `op1810`, which uses the `aws login` type SST can't read). Renew with `aws login --profile op1810`. |
-| Branch with unmerged work | `claude/dreamy-planck-eatgrb`: CI fix, auto-deploy, Apple sign-in, this doc. Open a PR to `main`. |
+| Last deploy | `data-test`, 2026-10-03, from `main` at PR #9. Smoke test 18/18. |
+| Unmerged work | None. Everything is on `main`. |
 
 Status of each area:
 
 - **Working and verified:**
   - all pages;
   - all 5 models with tools, through AgentCore;
+  - the MCP endpoint;
   - the DSQL schema;
+  - the six data API keys;
   - the smoke test.
+- **CI:** green on `main`.
 - **Deployed, not yet verified in a browser:**
   - sign-up, sign-in and the watchlist;
   - chat history across two browsers.
@@ -151,8 +166,6 @@ Status of each area:
   - Auto-deploy: an OIDC role plus GitHub variables `AWS_DEPLOY_ROLE_ARN`,
     `DEPLOY_STAGE=data-test` and `LUNA_DATA=true`. The workshop account may
     deny creating IAM roles.
-  - Third-party data keys: Finnhub, Polygon, Alpha Vantage, Exa, Twelve Data
-    and Tradier, as SST secrets on `data-test`.
 - **Built, off:**
   - the Guardrail;
   - prompt caching;
@@ -191,29 +204,87 @@ Status of each area:
 - **Commits** are authored as `Om Patel <156618510+ompatel181005@users.noreply.github.com>`,
   with no AI attribution lines. Work goes through PRs to `main`.
 
-## 6. Immediate next steps (demo readiness)
+## 6. What's left before the demo (anyone can pick these up)
 
-1. Merge the PR from `claude/dreamy-planck-eatgrb`. CI on `main` must go
-   green.
-2. Set the data API secrets on `data-test`, then redeploy:
+Say in the team chat which item you're taking. Done items move to §3.
+
+| # | Task | Who | Status |
+|---|---|---|---|
+| 1 | Browser test of accounts and sync (below) | Anyone with a browser | **Open** |
+| 2 | Google sign-in (below) | Someone with a Google account | **Open** |
+| 3 | Demo assets: CloudWatch screenshot, backup video, Claude Desktop on `/api/mcp` | Presenter | **Open** |
+| 4 | Rotate the data API keys that were pasted into a chat | Key owner | **Open** |
+| 5 | Auto-deploy: create the OIDC role (`docs/DEPLOY.md` §4) and the three GitHub variables | Someone with AWS + repo admin | **Open**, may be blocked by the workshop account |
+| - | Data API keys on `data-test`, redeploy, smoke test | Om | Done 2026-10-03 |
+| - | Apple sign-in | - | On hold (paid account) |
+
+### 1. Browser test
+
+On https://d2wyrxhbmhmu6j.cloudfront.net:
+1. Sign up with a new email and password, sign out, sign in again.
+2. Add NVDA to the watchlist and reload. It must still be there.
+3. Ask the chat "What is AAPL trading at?"
+4. In an incognito window, sign in with the same account. The chat from step
+   3 must be in history and NVDA in the watchlist.
+
+If something fails, note the message on screen and the time, then read the
+server log:
+`aws logs tail /aws/lambda/luna-ai-preview-data-test-SiteServerUseast1Function-nvndudub --since 15m --profile op1810-sst`
+
+### 2. Google sign-in
+
+Free, about 10 minutes. The code is done; it only needs credentials.
+
+1. https://console.cloud.google.com → **New project** `Luna Terminal`, and
+   select it.
+2. https://console.cloud.google.com/auth/overview → **Get started**:
+   - app name `Luna Terminal`;
+   - your support email;
+   - audience **External**;
+   - contact email.
+
+   Then either add the team's emails under **Audience → Test users**, or
+   click **Publish app**. Basic profile and email need no Google review.
+3. https://console.cloud.google.com/auth/clients → **Create client**, type
+   **Web application**. Add both **Authorized redirect URIs**:
+   - `https://d2wyrxhbmhmu6j.cloudfront.net/api/auth/callback/google`
+   - `http://localhost:3000/api/auth/callback/google`
+4. Copy the client ID and secret into AWS (never into chat or git):
    ```powershell
-   $Env:AWS_PROFILE="op1810-sst"; $Env:LUNA_DATA="true"
-   npm run build:agent; npx sst deploy --stage data-test
+   $Env:AWS_PROFILE="op1810-sst"
+   npx sst secret set AuthGoogleId <client id> --stage data-test
+   npx sst secret set AuthGoogleSecret <client secret> --stage data-test
    ```
-3. Run `npm run check:bedrock` (all OK), then
-   `npm run smoke:site https://d2wyrxhbmhmu6j.cloudfront.net` (18/18).
-4. Test in the browser:
-   - sign up, then sign in;
-   - add a watchlist item;
-   - ask a chat question;
-   - open an incognito window, sign in, and check the history and watchlist
-     are there.
-5. Set up Google sign-in. (Apple is on hold: it needs a paid developer account.)
-6. Try the OIDC role for auto-deploy (`docs/DEPLOY.md` §4).
-7. Demo assets:
-   - a screenshot of CloudWatch → Metrics → LunaTerminal/AI;
-   - a backup screen recording of the `docs/DEMO.md` script;
-   - Claude Desktop connected to `/api/mcp` for demo step 7.
+   For local dev, also add `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET` to
+   `.env.local`.
+5. Redeploy (always with `LUNA_DATA`):
+   ```powershell
+   $Env:LUNA_DATA="true"; npm run build:agent; npx sst deploy --stage data-test
+   ```
+6. Check: https://d2wyrxhbmhmu6j.cloudfront.net/api/auth/providers lists
+   `google`, and **Sign in → Continue with Google** returns you signed in.
+
+If it fails:
+- `redirect_uri_mismatch`: the URI in step 3 must match exactly (https, no
+  trailing slash).
+- "Access blocked" or "not a test user": add the email as a test user, or
+  publish the app.
+- An error about the same email: that address already has a password
+  account. This is deliberate (no email verification yet).
+
+### 3. Demo assets
+
+- **CloudWatch:** AWS console → CloudWatch → Metrics → `LunaTerminal/AI`.
+  Graph `LatencyMs` (average) and `OutputTokens` (sum) by `Model`, then take
+  a screenshot.
+- **Backup video:** record the `docs/DEMO.md` script.
+- **MCP:** in Claude Desktop, Settings → Connectors → add
+  `https://d2wyrxhbmhmu6j.cloudfront.net/api/mcp`.
+
+### After any redeploy
+
+Run `npm run smoke:site https://d2wyrxhbmhmu6j.cloudfront.net` and expect
+18/18.
 
 ## 7. What to build next
 
