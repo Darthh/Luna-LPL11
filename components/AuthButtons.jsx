@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useSession, signOut } from "next-auth/react";
 import AuthModal from "./AuthModal";
+import styles from "./AuthButtons.module.css";
 
 // Sign in / sign up / account controls for the site header.
 export default function AuthButtons() {
@@ -27,8 +28,11 @@ export default function AuthButtons() {
     const initial = label.charAt(0).toUpperCase();
     return (
       <div className="auth-buttons" ref={menuRef}>
-        <button className="auth-avatar" onClick={() => setMenuOpen((v) => !v)} aria-label="Account menu">
-          {session.user.image ? <img src={session.user.image} alt="" /> : initial}
+        <button className={styles.account} onClick={() => setMenuOpen((v) => !v)} aria-label={`Account menu for ${label}`} aria-expanded={menuOpen}>
+          <span className="auth-avatar" aria-hidden="true">
+            {session.user.image ? <img src={session.user.image} alt="" /> : initial}
+          </span>
+          <span className={styles.name} title={label}>{label}</span>
         </button>
         {menuOpen && (
           <div className="auth-menu">
