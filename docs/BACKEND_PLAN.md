@@ -396,7 +396,8 @@ placeholders — fill in.
       OpenNext 3.9.14 packages the app; the packaged Lambda handler serves
       `/api/chats` against a local DynamoDB (dynalite) with production
       cookies.
-- [ ] First real `sst deploy` — needs an AWS account (see open questions).
+- [x] First real `sst deploy`: stages `agents` (AI preview) and `data-test`
+      (full data stack) in the workshop account, 2026-10-02.
 
 ### Phase 3 — Data on AWS · 🟡 mostly done on `backend-aws-plan`
 - [x] DSQL cluster, DynamoDB table and S3 bucket in SST behind
@@ -410,13 +411,17 @@ placeholders — fill in.
 - [x] Shared rate limiter: one atomic DynamoDB counter per key/window
       (`RATE_LIMIT_TABLE`), memory fallback — closes the "per-process
       limiter" gap the AI preview doc flags for the paid AI routes.
-- [ ] Run the migration against a real DSQL cluster (needs AWS).
+- [x] Migration run against real DSQL on `data-test`: 34 statements applied.
 - [ ] `memo` L2 cache and game rooms on DynamoDB.
 - [ ] S3 `filingStore`; presigned avatar uploads.
 
 ### Phase 4 — AI on Bedrock · 🟡 multi-model chat done on `main`
 - [x] Bedrock chat with model picker, scoped IAM (teammate, see §7).
-- [ ] Prompt caching, Guardrail, usage metrics, more tools (§7).
+- [x] Usage metrics (CloudWatch EMF `LunaTerminal/AI`), model failover,
+      classified AWS errors, parallel tools.
+- [x] Prompt caching and Guardrail built behind switches (`BEDROCK_PROMPT_CACHE`,
+      `LUNA_GUARDRAIL`). [ ] Test and turn them on.
+- [x] Tools served to outside agents over MCP (`/api/mcp`, docs/MCP.md).
 - [ ] Server-side history load by `chatId`; async titles via DynamoDB Streams.
 
 ### Phase 5 — Jobs (2 days)
@@ -424,10 +429,12 @@ placeholders — fill in.
 - [ ] Step Functions 13F ingestion → S3.
 
 ### Phase 6 — Hardening & showcase (1–2 days)
-- [ ] WAF rules, replace Turnstile; account deletion across stores.
+- [ ] WAF rules, replace Turnstile (now optional, off by default); account
+      deletion across stores.
 - [ ] CloudWatch dashboard, X-Ray, Budgets alarm.
 - [ ] Load test chat + map routes; trace with chrome-devtools per `AGENTS.md`.
-- [ ] Architecture diagram + demo script for the AWS track (§11).
+- [x] Architecture diagram + demo script for the AWS track (docs/DEMO.md).
+- [x] Auto-deploy from GitHub Actions after CI (OIDC). [ ] Needs the IAM role.
 
 Stretch: Bedrock Knowledge Base / `search_filings` tool, semantic chat
 search, multi-region DSQL.

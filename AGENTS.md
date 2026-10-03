@@ -1,3 +1,8 @@
+# Start here
+
+`docs/HANDOFF.md` has the project's history, current AWS state, rules learned
+the hard way and what to build next. Read it before starting work.
+
 # Commit and push workflow
 
 For this project, after every prompt that changes project files, verify the
