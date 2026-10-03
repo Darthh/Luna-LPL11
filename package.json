@@ -12,7 +12,8 @@
     "test:brand": "node scripts/test-brand-welcome.mjs",
     "postinstall": "prisma generate",
     "db:migrate": "node scripts/dsql-migrate.mjs",
-    "db:migrate:dsql": "node scripts/dsql-migrate.mjs"
+    "db:migrate:dsql": "node scripts/dsql-migrate.mjs",
+    "check:bedrock": "node scripts/check-bedrock.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.116.0",

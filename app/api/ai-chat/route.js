@@ -7,8 +7,9 @@ import { fetchYahooQuotes } from "@/lib/yahooQuote";
 import { YAHOO_USER_AGENT } from "@/lib/userAgent";
 import { zoneOf } from "@/lib/zone";
 import { GET as fearGreedRoute } from "../fear-greed/route";
-import { DEFAULT_HOSTED_MODEL, hostedModel } from "@/lib/hostedModels.mjs";
+import { DEFAULT_HOSTED_MODEL, HOSTED_MODELS, backupModel, hostedModel } from "@/lib/hostedModels.mjs";
 import { planAws, answerAws } from "@/lib/awsChat.mjs";
+import { classifyAwsError, withFailover } from "@/lib/awsErrors.mjs";
 
 // The AI Bot's harness: Claude, wired to the same live feeds the rest of the
 // site draws on. The grounding is the point - a language model asked "what's
@@ -332,10 +333,30 @@ export async function POST(request) {
       // sentence. A failure after that point has to surface as an error.
       let streamed = false;
 
+      // Hosted (non-Anthropic) models: one retry for a blip, then a backup
+      // model if this one is the problem - but only until text has reached
+      // the browser. The visitor is told when a different model answered.
+      const aws = config.provider !== "anthropic";
+      const backup = aws ? backupModel(requestedModel) : null;
+      let answeredBy = config;
+      const onAws = (stage, attempt) =>
+        withFailover({ primary: answeredBy, backup, stage, attempt, canSwitch: () => !streamed }).then(({ value, config: used }) => {
+          answeredBy = used;
+          return value;
+        });
+      const sendAnswerText = (delta) => {
+        if (!streamed && answeredBy !== config) {
+          const asked = HOSTED_MODELS.find((m) => m.id === requestedModel)?.label || "The selected model";
+          send("text", `_${asked} was unavailable, so ${answeredBy.label} answered._\n\n`);
+        }
+        streamed = true;
+        send("text", delta);
+      };
+
       try {
         // Turn one: which feeds does this question need? Not streamed - it
         // produces tool calls, not prose.
-        const planned = config.provider !== "anthropic" ? { content: await planAws(config, system, messages, TOOL_SCHEMA) } : await anthropic.messages.create({
+        const planned = aws ? { content: await onAws("plan", (c) => planAws(c, system, messages, TOOL_SCHEMA)) } : await anthropic.messages.create({
           model: config.model,
           max_tokens: PLAN_MAX_TOKENS,
           system,
@@ -350,12 +371,20 @@ export async function POST(request) {
         // below are only valid as replies to it.
         messages.push({ role: "assistant", content: planned.content });
 
+        // The tools run at the same time, not one after another: a question
+        // that needs a quote, a history and the sentiment reading waits for
+        // the slowest feed instead of all three in turn.
+        const outcomes = await Promise.all(
+          calls.map((call, index) => {
+            const run = TOOLS[call.name];
+            if (index >= 4) return { error: "Tool limit reached; ask a narrower question." };
+            if (!run) return { error: `No such tool: ${call.name}` };
+            return run(call.input).catch((e) => ({ error: String(e.message || e) }));
+          })
+        );
         const results = [];
         for (const [index, call] of calls.entries()) {
-          const run = TOOLS[call.name];
-          const result = index >= 4 ? { error: "Tool limit reached; ask a narrower question." } : run
-            ? await run(call.input).catch((e) => ({ error: String(e.message || e) }))
-            : { error: `No such tool: ${call.name}` };
+          const result = outcomes[index];
           if (call.name !== "no_data_needed") {
             send("data", { tool: call.name, args: call.input, result });
           }
@@ -372,11 +401,8 @@ export async function POST(request) {
 
         // Turn two: the answer, streamed. Tools are withheld so it writes
         // from what it just got rather than looping for more.
-        if (config.provider !== "anthropic") {
-          await answerAws(config, system, messages, TOOL_SCHEMA, delta => {
-            streamed = true;
-            send("text", delta);
-          });
+        if (aws) {
+          await onAws("answer", (c) => answerAws(c, system, messages, TOOL_SCHEMA, sendAnswerText));
           return;
         }
         const answer = anthropic.messages.stream({
@@ -393,11 +419,14 @@ export async function POST(request) {
         });
         await answer.finalMessage();
       } catch (err) {
-        if (config.provider !== "anthropic") {
-          console.error("Hosted chat failed:", err?.name);
+        if (aws) {
+          // Already logged with its cause by withFailover; tell the visitor
+          // what kind of failure it was rather than one catch-all sentence.
           send("error", streamed ? "The hosted answer was cut off. Try again." : config.provider === "google"
             ? "Gemini could not answer. Check the server's Google API key, model access, and quota."
-            : "This AWS model could not answer. Check AWS credentials, region, model access, and inference permissions.");
+            : err?.message === "The model did not retrieve data before answering."
+              ? "The model answered without checking live data, so the answer was withheld. Try again or rephrase."
+              : classifyAwsError(err).message);
           return;
         }
         // The model failed - a bad key, no credit, an outage. None of those are
