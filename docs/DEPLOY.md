@@ -11,6 +11,7 @@ There are two shapes, chosen with an environment variable at deploy time:
 |---|---|---|
 | Site (`Site`: CloudFront → Lambda via OpenNext, streaming) | ✓ | ✓ |
 | Hosted chat models on Bedrock (`lib/hostedModels.mjs`) | ✓ | ✓ |
+| AgentCore runtime, S3 Vectors document search, S3 Tables history, research worker (`infra/research.ts`, see `docs/AWS_AGENT_RESEARCH.md`) | ✓ | ✓ |
 | DynamoDB `LunaData`: saved chats, shared rate limits | – | ✓ |
 | S3 `LunaFiles`: filing cache, avatars (Phase 3) | – | ✓ |
 | Aurora DSQL `LunaDb`: accounts, watchlists, alerts, CRM | – | ✓ |
@@ -29,8 +30,10 @@ works). Use a clean checkout so no local files ship with the build.
 ```bash
 npm ci
 npx sst secret set AuthSecret "$(openssl rand -base64 32)" --stage <stage>
-npx sst deploy --stage <stage>                    # AI preview
-LUNA_DATA=true npx sst deploy --stage <stage>     # full app
+npm run build:agent                                # AgentCore bundle, always first
+npx sst deploy --stage <stage>                     # AI preview + research services
+LUNA_DATA=true npx sst deploy --stage <stage>      # + accounts, saved chats, shared limits
+# For the team's `agents` stage, `npm run deploy:aws` does build + deploy.
 ```
 
 `sst deploy` builds with `scripts/build-aws.mjs` (OpenNext 4, with fixes for

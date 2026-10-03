@@ -10,6 +10,7 @@ import { ollamaModels, ollamaChat } from "@/lib/ollamaClient.mjs";
 import { readChats, saveChat } from "@/lib/chatHistory";
 import { STOCK_RANGES, chartGeometry, stockLookupsForMessages, stockLookupsForAnswer, loadStockCards } from "@/lib/chatStockCard.mjs";
 import { HOSTED_MODELS, DEFAULT_HOSTED_MODEL } from "@/lib/hostedModels.mjs";
+import AIResearchPanel from "./AIResearchPanel";
 
 const LOCAL_KEY = "lunaLocalModel";
 const LOCAL_SECRET_KEY = "lunaLocalModelKey";
@@ -139,7 +140,7 @@ function localChatUrl(value) {
   return base.endsWith("/chat/completions") ? base : `${base}/chat/completions`;
 }
 
-async function readHostedResponse(response, onText) {
+async function readHostedResponse(response, onText, onData = () => {}) {
   if (!response.ok || !response.body) {
     const body = await response.json().catch(() => null);
     throw new Error(body?.error || `The hosted model is unavailable (${response.status}).`);
@@ -162,6 +163,8 @@ async function readHostedResponse(response, onText) {
         onText(answer);
       } else if (event.t === "error") {
         throw new Error(event.v);
+      } else if (event.t === "data") {
+        onData(event.v);
       }
     }
   }
@@ -235,6 +238,7 @@ export default function AIWorkspace({ chatId = null }) {
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [documentIds, setDocumentIds] = useState([]);
   const scroller = useRef(null);
   const activeChatId = useRef(chatId);
 
@@ -377,9 +381,13 @@ export default function AIWorkspace({ chatId = null }) {
         const response = await fetch("/api/ai-chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages: outgoing, model: hostedModel, webResearch: webSearch }),
+          body: JSON.stringify({ messages: outgoing, model: hostedModel, webResearch: webSearch, conversationId, documentIds }),
         });
-        answer = await readHostedResponse(response, update);
+        answer = await readHostedResponse(response, update, data => {
+          for (const source of data?.result?.sources || []) {
+            if (!sources.some(existing => existing.url === source.url)) sources.push(source);
+          }
+        });
       } else if (mode === "ollama") {
         answer = await ollamaChat({ model: ollamaModel, messages: outgoing }, update);
       } else {
@@ -448,6 +456,7 @@ export default function AIWorkspace({ chatId = null }) {
           </div>
         )}
 
+        {mode === "hosted" && <AIResearchPanel model={hostedModel} question={input} disabled={busy} selected={documentIds} onSelect={setDocumentIds} />}
         <form className="ai-composer" onSubmit={(event) => { event.preventDefault(); send(input); }}>
           <textarea
             value={input}
