@@ -1,6 +1,6 @@
 # Luna Terminal — Backend & AWS Plan
 
-Status: **in progress** (Phases 0–2 done, Phase 4 started; Phase 1 front end pending) · Branch: `backend-aws-plan` · Last updated: 2026-10-02
+Status: **in progress** — Phases 0–2 done, 3 mostly done, 4 led by `main` · Branch: `backend-aws-plan` · Last updated: 2026-10-03
 
 This document is the working plan for turning Luna's backend into something
 that runs properly on AWS, persists user data (starting with AI chat
@@ -140,22 +140,22 @@ backend can change storage without the UI noticing.
 - Both hosted (Luna Finance) and Ollama chats are saved the same way — the
   **client** persists, because Ollama answers never touch our server.
 
-### 4.2 Client module (front-end owner) — ⏳ not started, owner: chat FE
+### 4.2 Client side — ✅ implemented as background sync
 
-`lib/chatStore.js` — async version of today's `lib/chatHistory.js` API, so
-`AIWorkspace.jsx` / `TerminalNav.jsx` change minimally:
+Instead of a new async store the UI would have to be rewritten around,
+`lib/chatHistory.js` keeps the browser copy as the UI's source and syncs it:
 
-```js
-listChats({ cursor, q })        // -> { chats: [{ id, title, updatedAt, messageCount }], cursor }
-getChat(id)                     // -> { id, title, messages: [...] }
-saveChat({ id, title, messages }) // POST full history; server keeps only new ones
-renameChat(id, title)
-deleteChat(id)
-importLocalChats()              // one-shot on sign-in
-```
+- `saveChat()` also POSTs the whole conversation to
+  `/api/chats/:id/messages` in the background (the server keeps only new
+  messages, so this also catches up after a failed save).
+- `deleteChat()` also DELETEs the server copy.
+- `syncChats()` — called once by the sidebar (`TerminalNav.jsx`) — pulls the
+  account's recent chats the browser is missing or behind on, and uploads
+  local chats the server lacks (`/api/chats/import`).
+- A 401 (signed out) or 503 (no store) turns syncing off for the page load.
 
-Internally: `session ? fetch('/api/chats/...') : localStorage`. Keep the
-`luna-chat-history` window event so the sidebar refreshes as today.
+`AIWorkspace.jsx` is unchanged. Verified in a real browser: a chat sent on
+one signed-in browser shows up in a second, fresh browser's sidebar.
 
 ### 4.3 HTTP API (backend owner) — ✅ implemented
 
@@ -302,33 +302,26 @@ tests), DynamoDB in AWS.
 
 ## 7. AI on AWS
 
-1. **Provider abstraction** in `app/api/ai-chat/route.js`: choose the
-   client at startup —
-   `AnthropicBedrockMantle` from `@anthropic-ai/bedrock-sdk` (IAM role,
-   `awsRegion`, model ids carry an `anthropic.` prefix) when
-   `AI_PROVIDER=bedrock`, the first-party `Anthropic` client when an API key
-   is set, else the keyless `lib/liloLocal.js` path. Messages/stream
-   surface is the same, so the tool loop is unchanged.
-2. **Model choice**: keep Haiku 4.5 for latency. If you upgrade to
-   Sonnet 5.5 / Opus 5.5, note the route currently forces the first turn
-   with `tool_choice: "any"` (`FETCH_FIRST`) — those models reject forced
-   tool choice, so switch to `tool_choice: auto` + a prompt instruction +
-   `strict: true` tools.
-3. **Prompt caching**: mark the system prompt and tool list with
-   `cache_control` — they are identical on every request.
-4. **Guardrails**: attach a Bedrock Guardrail (denied topics: personalised
-   buy/sell advice; PII masking) and surface a friendly message on
-   intervention.
-5. **Usage metering**: log `usage` per request to CloudWatch (EMF metrics)
-   keyed by plan (`User.plan`) — feeds cost dashboards and future plan
-   limits.
-6. **Stretch — retrieval over our own data**: Bedrock Knowledge Base (or
-   S3 Vectors) over parsed 13F filings and site pages, exposed as a new
-   `search_filings` tool ("which funds added NVDA last quarter?").
-7. **Stretch — semantic chat search**: embeddings of chat messages for the
-   sidebar search.
+**Done on `main` (teammate):** a hosted-model picker (`lib/hostedModels.mjs`)
+with GPT-5.6 Sol (default), Claude Opus 5, Llama 4 Maverick (Bedrock
+Converse), Qwen3 and Gemma 4 (Bedrock Mantle, SigV4), Gemini (Google key)
+and the key-based Luna Finance — all sharing the same market tools
+(`lib/awsChat.mjs`). IAM is scoped to exactly those models in
+`sst.config.ts`. Details and what the workshop account allows:
+`docs/AWS_AI_PREVIEW.md`.
 
----
+Next:
+1. **Prompt caching** on the system prompt and tool list. For Converse that
+   is a `cachePoint` block; for Anthropic-shaped requests, explicit
+   `cache_control` breakpoints (Bedrock doesn't take the top-level field).
+2. **Guardrails**: a Bedrock Guardrail (denied topic: personalised buy/sell
+   advice; PII masking) applied to Converse calls via `guardrailConfig`.
+3. **Usage metering**: log token `usage` per request as CloudWatch EMF
+   metrics by model — cost per model is a strong AWS-track chart.
+4. **More tools** (from the preview doc): ETF holdings, 13F filings,
+   fundamentals, supply chain — the library functions already exist.
+5. **Stretch**: Bedrock Knowledge Base over parsed 13F filings in S3, as a
+   `search_filings` tool with citations.
 
 ## 8. Security, reliability, cost
 
@@ -380,16 +373,14 @@ placeholders — fill in.
       reality as it lands.
 
 ### Phase 1 — Chat contract & local backend (1–2 days) · owners: chat FE + backend
-- [ ] Agree §4 contract with the chat-history owner (comment on the PR for
-      this branch).
+- [ ] Confirm §4 with whoever owns chat UI next (no one had started it on
+      `main` as of 2026-10-03).
 - [x] `/api/chats/*` routes behind a repository with memory + DynamoDB
       stores (BE).
 - [x] Tests for validation, ownership, idempotent append, gaps, search,
       pagination, import — against both stores (DynamoDB via `dynalite`).
-- [ ] `lib/chatStore.js` + wire `AIWorkspace.jsx` / `TerminalNav.jsx`
-      (FE owner): call `POST /api/chats/:id/messages` where `saveChat()` is
-      called today, list from `GET /api/chats`, call `/api/chats/import` once
-      after sign-in, fall back to `localStorage` on 401/503.
+- [x] Front end: background sync in `lib/chatHistory.js` (§4.2), verified in
+      a real browser across two sessions.
 
 ### Phase 2 — AWS skeleton with SST (1–2 days) · ✅ done on `backend-aws-plan` (not yet deployed)
 - [x] `sst.config.ts` (SST v4): `Nextjs` site, `Dynamo` table `LunaData`
@@ -407,26 +398,26 @@ placeholders — fill in.
       cookies.
 - [ ] First real `sst deploy` — needs an AWS account (see open questions).
 
-### Phase 3 — Data on AWS (2–3 days)
-- [ ] DSQL cluster in SST; IAM-token `lib/prisma.js`; `scripts/dsql-migrate.mjs`;
-      schema compatibility pass (§5.1).
-- [ ] DynamoDB `ChatRepository`; switch `/api/chats` to it in AWS stages.
-- [ ] DynamoDB-backed `rateLimit`, `memo` L2, game rooms.
+### Phase 3 — Data on AWS · 🟡 mostly done on `backend-aws-plan`
+- [x] DSQL cluster, DynamoDB table and S3 bucket in SST behind
+      `LUNA_DATA=true` (the default deploy stays the AI preview).
+- [x] `scripts/dsql-migrate.mjs` (`npm run db:migrate:dsql`): one statement
+      per transaction, drops FKs, `CREATE INDEX ASYNC`, resumable ledger.
+      Schema uses `relationMode = "prisma"`; `0003_relation_indexes.sql`
+      indexes the relation columns. Verified on Postgres: migrated schema
+      matches Prisma; register → sign-in → watchlist → chats work with no FKs.
+- [x] `/api/chats` on DynamoDB in AWS stages (`CHAT_TABLE`).
+- [x] Shared rate limiter: one atomic DynamoDB counter per key/window
+      (`RATE_LIMIT_TABLE`), memory fallback — closes the "per-process
+      limiter" gap the AI preview doc flags for the paid AI routes.
+- [ ] Run the migration against a real DSQL cluster (needs AWS).
+- [ ] `memo` L2 cache and game rooms on DynamoDB.
 - [ ] S3 `filingStore`; presigned avatar uploads.
 
-### Phase 4 — AI on Bedrock (1–2 days) · 🟡 started
-- [x] Provider switch (`lib/aiProvider.mjs`): `AI_PROVIDER=bedrock` uses
-      `AnthropicBedrockMantle` from `@anthropic-ai/bedrock-sdk` (IAM/SigV4,
-      model `anthropic.claude-haiku-4-5`); otherwise the Claude API key;
-      otherwise keyless. The chat route's tool loop is unchanged.
-- [x] SST: web function gets `bedrock-mantle:CreateInference`;
-      `AI_PROVIDER=bedrock` by default in AWS stages.
-- [x] Tests: provider selection, model-id mapping, and a request signed for
-      `bedrock-mantle` in the right region (fake fetch, no AWS call).
-- [ ] Prompt caching on system prompt + tools (explicit `cache_control`
-      breakpoints — Bedrock doesn't take the top-level auto-caching field).
-- [ ] Guardrail; usage metrics; server-side history load by `chatId`.
-- [ ] Async chat titles via DynamoDB Streams.
+### Phase 4 — AI on Bedrock · 🟡 multi-model chat done on `main`
+- [x] Bedrock chat with model picker, scoped IAM (teammate, see §7).
+- [ ] Prompt caching, Guardrail, usage metrics, more tools (§7).
+- [ ] Server-side history load by `chatId`; async titles via DynamoDB Streams.
 
 ### Phase 5 — Jobs (2 days)
 - [ ] EventBridge Scheduler → alerts Lambda → SES.
@@ -470,9 +461,11 @@ CloudWatch dashboard and the Step Functions run graph.
 
 ## 12. Open questions
 
-1. Who owns the chat front end, and has storage already been chosen? (§4)
-2. AWS account/region and who has admin access? Is Bedrock model access
-   for Claude already enabled in that region?
-3. Do we keep the first-party Anthropic key path, or Bedrock only?
-4. Track deadline — determines whether Phase 5/stretch items are in scope.
-5. Are `Forum*` and `ApiKey` models still wanted?
+1. Can the workshop account create DynamoDB tables and a DSQL cluster? If
+   not, `LUNA_DATA=true` needs another account (the AI preview runs either way).
+2. Is the workshop account long-lived enough for the demo, or should the
+   demo stage live in a team-owned account?
+3. Track deadline — decides whether Phase 5 (jobs) or §7 Guardrails/metering
+   come first. Recommendation: Guardrails + metering (cheap, visible) first.
+4. Are `Forum*` and `ApiKey` models still wanted? They cost nothing, but they
+   are schema the migration carries.

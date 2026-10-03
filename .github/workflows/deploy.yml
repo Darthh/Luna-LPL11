@@ -26,6 +26,7 @@ jobs:
     env:
       STAGE: ${{ github.event.inputs.stage || (startsWith(github.ref, 'refs/tags/') && 'production') || 'staging' }}
       SST_TELEMETRY_DISABLED: "1"
+      LUNA_DATA: ${{ vars.LUNA_DATA }}
       ALERT_FROM_EMAIL: ${{ vars.ALERT_FROM_EMAIL }}
       LUNA_DOMAIN: ${{ vars.LUNA_DOMAIN }}
     environment: ${{ github.event.inputs.stage || (startsWith(github.ref, 'refs/tags/') && 'production') || 'staging' }}

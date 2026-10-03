@@ -1,65 +1,105 @@
 # Deploying Luna Terminal to AWS
 
 Infrastructure is code in [`sst.config.ts`](../sst.config.ts) (SST v4). One
-command creates or updates a whole **stage**: an isolated copy of the stack.
-Use one stage per developer (e.g. `alice`), plus `staging` and `production`.
+command creates or updates a **stage**, an isolated copy of the stack. Stages
+in use: `agents` (the AI preview in the team's workshop account), plus one per
+developer, `staging` and `production` as needed.
 
-| Resource | SST component | What it holds |
+There are two shapes, chosen with an environment variable at deploy time:
+
+| | `npx sst deploy --stage <s>` | `LUNA_DATA=true npx sst deploy --stage <s>` |
 |---|---|---|
-| `LunaWeb` | `sst.aws.Nextjs` | The app: CloudFront → Lambda (OpenNext), static assets in S3 |
-| `LunaData` | `sst.aws.Dynamo` | Saved chats (more item types to come; see `docs/BACKEND_PLAN.md` §5.2) |
-| `LunaFiles` | `sst.aws.Bucket` | 13F filing cache, avatars, exports (wired up in Phase 3) |
-| `LunaDb` | `sst.aws.Dsql` | Accounts, watchlists, alerts, CRM (Aurora DSQL, IAM auth) |
+| Site (`Site`: CloudFront → Lambda via OpenNext, streaming) | ✓ | ✓ |
+| Hosted chat models on Bedrock (`lib/hostedModels.mjs`) | ✓ | ✓ |
+| DynamoDB `LunaData`: saved chats, shared rate limits | – | ✓ |
+| S3 `LunaFiles`: filing cache, avatars (Phase 3) | – | ✓ |
+| Aurora DSQL `LunaDb`: accounts, watchlists, alerts, CRM | – | ✓ |
+| Sign-in, watchlist, saved chats | ✗ (no database) | ✓ (after migrating, §3) |
 
-Each resource is **linked** to the web function, so the Lambda gets IAM access
-to it and nothing needs a password. The app learns names and endpoints from
-environment variables set in `sst.config.ts` (`CHAT_TABLE`, `DATA_BUCKET`,
-`DSQL_ENDPOINT`, `DSQL_REGION`); app code doesn't import SST.
+The default is the AI preview as first deployed (see `docs/AWS_AI_PREVIEW.md`):
+it creates nothing beyond the site, which suits a workshop account with
+restrictive policies. Every resource is reached through the Lambda's IAM role,
+so there is no database password, no AI key and no AWS key in the deployment.
 
-## 1. One-time AWS setup
+## 1. Deploy
 
-You need an AWS account and the AWS CLI signed in as an administrator
-(`aws sts get-caller-identity` should work).
-
-### Deploy from your machine
+You need AWS credentials for the target account (`aws sts get-caller-identity`
+works). Use a clean checkout so no local files ship with the build.
 
 ```bash
 npm ci
-npx sst secret set AuthSecret "$(openssl rand -base64 32)" --stage <you>
-npx sst deploy --stage <you>        # prints the CloudFront URL
+npx sst secret set AuthSecret "$(openssl rand -base64 32)" --stage <stage>
+npx sst deploy --stage <stage>                    # AI preview
+LUNA_DATA=true npx sst deploy --stage <stage>     # full app
 ```
 
-Optional features turn on when you set their secret. These are the same keys as
-`.env.local.example`:
+`sst deploy` builds with `scripts/build-aws.mjs` (OpenNext 4, with fixes for
+Windows paths and Prisma's generated aliases) and prints the CloudFront URL.
+
+Optional third-party feeds turn on when their secret is set; an unset secret
+means the feature is off. These are the same keys as `.env.local.example`:
 
 ```bash
-npx sst secret set FinnhubApiKey   <value> --stage <you>
-npx sst secret set AnthropicApiKey <value> --stage <you>
+npx sst secret set FinnhubApiKey <value> --stage <stage>
 # ExaApiKey, TwelvedataApiKey, AlphavantageApiKey, FmpApiKey, PolygonApiKey,
-# TradierApiToken, AuthGoogleId, AuthGoogleSecret, ResendApiKey, CronSecret,
-# TurnstileSecretKey, PrivatePassword, AnthropicWorkspaceId
-npx sst secret list --stage <you>
+# TradierApiToken, AnthropicApiKey, AnthropicWorkspaceId, AuthGoogleId,
+# AuthGoogleSecret, ResendApiKey, CronSecret, TurnstileSecretKey, PrivatePassword
+# Gemini: ENABLE_GEMINI=true at deploy time plus the GeminiApiKey secret.
+npx sst secret list --stage <stage>
 ```
 
-Changing a secret takes effect on the next `sst deploy`.
+Changing a secret takes effect on the next deploy. `npx sst remove --stage
+<stage>` deletes a stage. `production` is protected: its resources are
+retained on removal, and the table has point-in-time recovery and deletion
+protection.
 
-To remove a dev stage: `npx sst remove --stage <you>`. The `production` stage
-is protected: its resources are retained, and the table has deletion
-protection and point-in-time recovery.
+## 2. AI models (Bedrock)
 
-### Deploy from GitHub Actions (OIDC, no stored keys)
+The chat's model picker (`lib/hostedModels.mjs`) offers GPT-5.6 Sol (default),
+Claude Opus 5, Llama 4 Maverick, Qwen3 and Gemma 4 on Bedrock, plus Gemini and
+the key-based Luna Finance. `sst.config.ts` grants the Lambda exactly those
+models: `bedrock:InvokeModel*` on their model and inference-profile ARNs, and
+`bedrock-mantle:CreateInference` limited to the Qwen and Gemma model IDs.
+Adding a model means adding it to both files.
+
+Model access is set per account. On 2026-10-02 the workshop account denied
+Claude Opus 5.5, Fable 5.1 and GPT-6 Astra; see `docs/AWS_AI_PREVIEW.md` for
+what was tested there.
+
+## 3. Database schema (Aurora DSQL)
+
+Only with `LUNA_DATA=true`. The cluster starts empty. `sst deploy` prints its
+endpoint as `dsql`. Apply the schema from your machine with credentials that
+can connect as the cluster admin:
+
+```bash
+DSQL_ENDPOINT=<dsql output> npm run db:migrate:dsql
+```
+
+`scripts/dsql-migrate.mjs` sends each statement in its own transaction, a DSQL
+rule. It skips the foreign keys DSQL doesn't support (the Prisma schema uses
+`relationMode = "prisma"`, so the client enforces relations and cascades),
+builds indexes with `CREATE INDEX ASYNC`, and records every statement in
+`_luna_migrations`, so re-running is safe and resumes after a failure.
+`--dry-run` prints the statements without connecting.
+
+The same script migrates a plain Postgres (`DATABASE_URL=... npm run
+db:migrate`). That's how the schema is tested: migrated with no foreign keys,
+it matches `prisma/schema.prisma`, and sign-up, sign-in, the watchlist and
+saved chats work against it.
+
+## 4. Deploy from GitHub Actions (OIDC, no stored keys)
 
 `.github/workflows/deploy.yml` deploys `main` → `staging` and tags `v*` →
-`production`, and can also be run by hand for any stage. It stays skipped
-until you set it up:
+`production`, and can be run by hand for any stage. It is skipped until set up:
 
-1. **Create the GitHub OIDC provider** in IAM (once per account):
+1. Create the GitHub OIDC provider in IAM (once per account):
    ```bash
    aws iam create-open-id-connect-provider \
      --url https://token.actions.githubusercontent.com \
      --client-id-list sts.amazonaws.com
    ```
-2. **Create a deploy role** that only this repository can assume:
+2. Create a role that only this repository can assume:
    ```bash
    ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
    cat > trust.json <<EOF
@@ -80,65 +120,28 @@ until you set it up:
    aws iam attach-role-policy --role-name luna-github-deploy \
      --policy-arn arn:aws:iam::aws:policy/AdministratorAccess
    ```
-   SST creates IAM roles, CloudFront distributions and more, so start with
-   admin. Narrow the policy once the resource set is stable (Phase 6).
+   SST creates IAM roles, CloudFront distributions and more, so it starts
+   with admin. Narrow the policy once the resource set is stable. Workshop
+   accounts usually can't create IAM roles; deploy from a laptop there.
 3. In GitHub, go to **Settings → Secrets and variables → Actions → Variables**
-   and add `AWS_DEPLOY_ROLE_ARN` = `arn:aws:iam::<account>:role/luna-github-deploy`.
-   Optional variables: `ALERT_FROM_EMAIL` and `LUNA_DOMAIN` (a custom domain
-   hosted in Route 53).
+   and add `AWS_DEPLOY_ROLE_ARN`. Optional variables: `LUNA_DATA` (`true` for
+   the full app), `ALERT_FROM_EMAIL`, `LUNA_DOMAIN`.
 4. Create GitHub **environments** named `staging` and `production`. Add
    required reviewers to `production` if you want a manual gate.
-5. Set the stage secrets once from your machine, as above, using
-   `--stage staging` and `--stage production`.
 
-## 2. AI: Claude in Amazon Bedrock
+## 5. Local development
 
-AWS stages run the assistant on Bedrock. The web function gets
-`bedrock-mantle:CreateInference`, and `lib/aiProvider.mjs` signs requests with
-the function's role, so no Anthropic key is needed in AWS.
+`npm run dev` with `.env.local`:
 
-- **Model access.** The default, Claude Haiku 4.5 (`anthropic.claude-haiku-4-5`),
-  is open to every Bedrock account. To use another model, set `AI_BOT_MODEL`
-  when deploying (e.g. `AI_BOT_MODEL=claude-sonnet-5-5 npx sst deploy ...`;
-  the `anthropic.` prefix is added for you). Some models need access granted
-  first under **Bedrock → Model access** in the AWS console.
-- **Region.** The stack is in `us-east-1`, where Bedrock serves Claude.
-- **Quota.** The default is 2M input tokens per minute. RPM limits are set by
-  AWS; request increases through AWS support.
-- **Use the Anthropic API instead:** deploy with `AI_PROVIDER=anthropic` and
-  set the `AnthropicApiKey` secret.
-- **Locally:** `AI_PROVIDER=bedrock` in `.env.local` uses your AWS profile/SSO
-  credentials; that identity needs the same permission.
-
-Bedrock doesn't support every Claude API feature. The assistant uses only tool
-use and streaming, which it does support. Bedrock lacks structured outputs,
-server-side tools such as web search, Batches and the Files API.
-
-## 3. Database schema (Aurora DSQL)
-
-The cluster is created empty. **Phase 3** of the plan adds
-`scripts/dsql-migrate.mjs`, which applies `migrations/*.sql` one statement per
-transaction (a DSQL rule). Until then, account features fail on a fresh stage:
-sign-in, watchlist, alerts and CRM. This includes saving chats, because that
-needs a signed-in user. Public research pages and the AI chat work without it.
-
-## 4. Local development
-
-Nothing changes: `npm run dev` with `.env.local` uses a local Postgres
-`DATABASE_URL` and an in-memory chat store. To develop against real AWS
-resources, `npx sst dev --stage <you>` runs `next dev` with the stage's linked
-resources and environment.
-
-## 5. What runs where
-
-| Concern | Local (`npm run dev`) | AWS stage |
+| Concern | Local | AWS stage |
 |---|---|---|
-| Accounts DB | `DATABASE_URL` (Postgres) | Aurora DSQL via IAM token (`lib/prisma.js`) |
-| Chat history | In-memory (lost on restart) | DynamoDB `LunaData` |
+| Accounts DB | `DATABASE_URL` (Postgres; `npm run db:migrate`) | Aurora DSQL via IAM token (`lib/prisma.js`) |
+| Saved chats | In-memory (lost on restart) | DynamoDB `LunaData` |
+| Rate limits | Per process | Shared DynamoDB counters |
+| Bedrock models | Your AWS profile or SSO credentials | The Lambda's role |
 | Secrets | `.env.local` | `sst secret` (SSM), injected as env vars |
-| AI | `ANTHROPIC_API_KEY`, `AI_PROVIDER=bedrock` with your AWS profile, or keyless | Claude in Amazon Bedrock via the Lambda's IAM role (`AI_PROVIDER=bedrock`) |
 
-## 6. Checks before a deploy
+## 6. Before you deploy
 
 ```bash
 npm run lint && npm test && npm run build
