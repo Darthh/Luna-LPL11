@@ -33,17 +33,13 @@ export default function ChatGreeting() {
     };
     // Defer the browser-only choice until after hydration.
     const initial = setTimeout(advance, 0);
-    let rotation = setInterval(advance, 15000);
     const newChat = () => {
       clearTimeout(initial);
       advance();
-      clearInterval(rotation);
-      rotation = setInterval(advance, 15000);
     };
     window.addEventListener("luna-new-chat", newChat);
     return () => {
       clearTimeout(initial);
-      clearInterval(rotation);
       window.removeEventListener("luna-new-chat", newChat);
     };
   }, []);
