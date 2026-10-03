@@ -182,6 +182,7 @@ The template is [`.env.local.example`](.env.local.example). Never put real provi
 | `ALPHAVANTAGE_API_KEY`, `FMP_API_KEY`, `POLYGON_API_KEY` | Optional earnings, estimates, or financial-data fallbacks. | No. |
 | `DATABASE_URL`, `AUTH_SECRET` | Email/password accounts and saved account data. | No for public views; yes for account features. |
 | `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET` | Optional Google sign-in. | No. |
+| `AUTH_APPLE_ID`, `AUTH_APPLE_SECRET` | Optional Apple sign-in; Services ID and client-secret JWT. See [setup](docs/SOCIAL_SIGN_IN.md). | No. |
 | `RESEND_API_KEY`, `ALERT_FROM_EMAIL`, `CRON_SECRET` | Scheduled sentiment email alerts. | No. |
 
 Market feeds can throttle or be unavailable. Some pages show a reduced view or a configuration message when an optional provider is missing.
