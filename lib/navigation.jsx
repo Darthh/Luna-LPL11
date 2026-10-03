@@ -278,7 +278,6 @@ export const NAV_LINKS = [
       { href: "/market-cap", label: "Companies by market cap", icon: RankIcon, widget: "marketCap" },
       { href: "/company-world-map", label: "Company world map", icon: WorldMapIcon, widget: "worldMap" },
       { href: "/dashboard#fear-greed", label: "Market sentiment", icon: DashboardIcon, widget: "gauge" },
-      { href: "/dashboard#compare-vs", label: "Index vs Stock", icon: CompareIcon, widget: "chart" },
       { href: "/dashboard#upcoming-events", label: "Upcoming events", icon: CalendarIcon, widget: "events" },
       { href: "/dashboard#popular-stocks", label: "Top 20 Popular stocks", icon: HotIcon, widget: "popular" },
     ],
