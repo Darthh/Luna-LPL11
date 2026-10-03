@@ -456,7 +456,6 @@ export default function AIWorkspace({ chatId = null }) {
           </div>
         )}
 
-        {mode === "hosted" && <AIResearchPanel disabled={busy} selected={documentIds} onSelect={setDocumentIds} />}
         <form className="ai-composer" onSubmit={(event) => { event.preventDefault(); send(input); }}>
           <textarea
             value={input}
@@ -473,6 +472,7 @@ export default function AIWorkspace({ chatId = null }) {
             maxLength={8000}
           />
           <div className="ai-composer-tools">
+            {mode === "hosted" && <AIResearchPanel disabled={busy} selected={documentIds} onSelect={setDocumentIds} />}
             <button type="button" className="ai-tool-button ai-web-toggle" disabled={busy} onClick={() => setWebSearch((on) => !on)} aria-pressed={webSearch} title="Search the web before answering. Your question is sent to Luna's search service.">
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18"/></svg>
               Web search
