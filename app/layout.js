@@ -1,6 +1,7 @@
 import "./globals.css";
 import "./halloween.css";
 import "./padres.css";
+import "./sidebar.css";
 import { Geist, Geist_Mono } from "next/font/google";
 import localFont from "next/font/local";
 import AuthSessionProvider from "@/components/AuthSessionProvider";
@@ -108,6 +109,7 @@ var p=localStorage.getItem(K.pattern);if(P.indexOf(p)===-1)p=TP[t]||'none';d.dat
 var f=localStorage.getItem(K.font);if(!F[f])f=X.font;d.style.setProperty('--font-ui',F[f]);
 var n=localStorage.getItem(K.density);if(D.indexOf(n)===-1)n=X.density;d.dataset.density=n;
 var w=localStorage.getItem(K.weight);if(W.indexOf(w)===-1)w=X.weight;d.dataset.weight=w;
+var s=localStorage.getItem(K.sidebar);d.dataset.sidebar=['small','medium','large'].indexOf(s)===-1?X.sidebar:s;
 }catch(e){d.dataset.theme=X.theme;}
 })();`;
 

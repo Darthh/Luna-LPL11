@@ -18,8 +18,8 @@ function BellIcon() {
   return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 8-3 8h18s-3-1-3-8" /><path d="M13.7 21a2 2 0 0 1-3.4 0" /></svg>;
 }
 
-export default function RsiLeAlertMenu({ enabled, onToggle }) {
-  const [open, setOpen] = useState(false);
+export default function RsiLeAlertMenu({ enabled, onToggle, embedded = false }) {
+  const [open, setOpen] = useState(embedded);
   const [rules, setRules] = useState([]);
   const [kind, setKind] = useState("signal");
   const [direction, setDirection] = useState("above");
@@ -32,7 +32,7 @@ export default function RsiLeAlertMenu({ enabled, onToggle }) {
 
   // Click-away and Escape, so the menu behaves like the other toolbar popovers.
   useEffect(() => {
-    if (!open) return;
+    if (!open || embedded) return;
     const onDown = (event) => { if (!rootRef.current?.contains(event.target)) setOpen(false); };
     const onKey = (event) => { if (event.key === "Escape") setOpen(false); };
     document.addEventListener("mousedown", onDown);
@@ -41,7 +41,7 @@ export default function RsiLeAlertMenu({ enabled, onToggle }) {
       document.removeEventListener("mousedown", onDown);
       document.removeEventListener("keydown", onKey);
     };
-  }, [open]);
+  }, [open, embedded]);
 
   const full = rules.length >= RSI_LE_MAX_RULES;
 
@@ -71,7 +71,7 @@ export default function RsiLeAlertMenu({ enabled, onToggle }) {
 
   return (
     <div className="rle-alertmenu" ref={rootRef}>
-      <button
+      {!embedded && <button
         type="button"
         className={`rle-notify-button${enabled && rules.length ? " active" : ""}`}
         onClick={() => setOpen((isOpen) => !isOpen)}
@@ -80,7 +80,7 @@ export default function RsiLeAlertMenu({ enabled, onToggle }) {
       >
         <BellIcon />
         <span>{enabled && rules.length ? `Alerts · ${rules.length}` : "Turn on Notifications"}</span>
-      </button>
+      </button>}
 
       {open && (
         <div className="rle-alertmenu-panel" role="dialog" aria-label="Notification alerts">

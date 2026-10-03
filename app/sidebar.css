@@ -1,0 +1,11 @@
+html[data-sidebar="medium"] { --tnav-w: 260px; --tnav-w-collapsed: 56px; --trail-w: 54px; }
+html[data-sidebar="large"] { --tnav-w: 310px; --tnav-w-collapsed: 64px; --trail-w: 66px; }
+html[data-sidebar="medium"] .trail-btn { width: 38px; height: 38px; }
+html[data-sidebar="large"] .trail-btn { width: 46px; height: 46px; }
+.notification-settings { display: grid; gap: 14px; }
+.notification-settings > label { display: grid; gap: 6px; font-size: 12px; }
+.notification-settings select { min-width: 0; width: 100%; padding: 7px; background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.notification-settings p { margin: 0; font-size: 12px; color: var(--text-soft); line-height: 1.5; }
+.notification-settings .fga-panel, .notification-settings .rle-alertmenu-panel { position: static; width: 100%; min-width: 0; margin: 0; box-shadow: none; box-sizing: border-box; }
+.notification-settings .fga, .notification-settings .rle-alertmenu { width: 100%; }
+.notification-settings a { color: var(--accent); font-size: 12px; }

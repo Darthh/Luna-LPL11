@@ -9,6 +9,7 @@ import AlertsPanel from "./AlertsPanel";
 import WatchlistMovers from "./WatchlistMovers";
 import MarketMovers from "./MarketMovers";
 import { useLanguage } from "./LanguageProvider";
+import NotificationSettings from "./NotificationSettings";
 
 // The far-right rail: icons only, each opening a panel over the page. The
 // terminal keeps a handful of things permanently reachable without giving them
@@ -111,6 +112,7 @@ export default function TerminalRail() {
     { id: "watchlist", label: t("My watchlist"), icon: WatchlistIcon },
     { id: "movers", label: t("Market movers"), icon: FlameIcon },
     { id: "alerts", label: t("Notifications"), icon: BellIcon },
+    { id: "add-alert", label: t("Add notifications"), icon: svg(<path d="M12 5v14M5 12h14" {...stroke} />) },
   ];
 
   return (
@@ -144,6 +146,7 @@ export default function TerminalRail() {
             </button>
           </header>
           <div className="trail-flyout-body">
+            {open === "add-alert" && <NotificationSettings />}
             {open === "profile" && <ProfilePanel session={session} t={t} />}
             {open === "events" && <UpcomingEvents />}
             {open === "popular" && <PopularStocksCard />}
