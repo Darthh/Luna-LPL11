@@ -8,7 +8,7 @@ import LunaAILogo from "@/components/LunaAILogo";
 import ChatSuggestions from "@/components/ChatSuggestions";
 import { ollamaModels, ollamaChat } from "@/lib/ollamaClient.mjs";
 import { readChats, saveChat } from "@/lib/chatHistory";
-import { STOCK_RANGES, chartGeometry, stockLookupsForMessages, stockLookupsForAnswer, loadStockCards } from "@/lib/chatStockCard.mjs";
+import { STOCK_RANGES, chartGeometry, stockLookupsForMessages, stockLookupsForAnswer, loadStockCards, isChatStockSymbolAllowed } from "@/lib/chatStockCard.mjs";
 import { HOSTED_MODELS, DEFAULT_HOSTED_MODEL } from "@/lib/hostedModels.mjs";
 import AIResearchPanel from "./AIResearchPanel";
 
@@ -446,7 +446,7 @@ export default function AIWorkspace({ chatId = null }) {
             {messages.map((message, index) => (
               <article key={index} className={`ai-message ai-message-${message.role}${message.error ? " is-error" : ""}`}>
                 {message.role === "assistant" && <div className="ai-answer-label"><LunaAILogo /><strong>{message.model || activeLabel}</strong></div>}
-                {(message.stockCards || (message.stockCard ? [message.stockCard] : [])).map(card => card.unavailable
+                {(message.stockCards || (message.stockCard ? [message.stockCard] : [])).filter(card => isChatStockSymbolAllowed(card.symbol)).map(card => card.unavailable
                   ? <p key={card.symbol}>Chart data is unavailable for <Link href={`/stock/${encodeURIComponent(card.symbol)}`}>{card.symbol}</Link>. Open the stock page to try again.</p>
                   : <StockQuoteCard key={card.symbol} card={card} />)}
                 {message.content ? <Rich text={message.content} /> : <span className="ai-thinking">{searching ? "Searching the web" : "Thinking"}</span>}
