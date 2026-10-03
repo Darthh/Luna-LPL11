@@ -17,6 +17,7 @@ import { fromNodeProviderChain } from "@aws-sdk/credential-providers";
 import { HOSTED_MODELS, hostedModel } from "../lib/hostedModels.mjs";
 import { answerAws, planAws } from "../lib/awsChat.mjs";
 import { classifyAwsError } from "../lib/awsErrors.mjs";
+import { awsClientOptions } from "../lib/awsAuth.mjs";
 
 // Capture the per-call metrics records awsChat writes, to report tokens.
 process.env.LUNA_METRICS = "on";
@@ -34,7 +35,8 @@ const tokens = (r) => `${r.InputTokens ?? "?"} in / ${r.OutputTokens ?? "?"} out
 
 const region = process.env.BEDROCK_REGION || process.env.AWS_REGION || "us-east-1";
 try {
-  const creds = await fromNodeProviderChain()();
+  // The same credentials the chat uses: BEDROCK_AWS_PROFILE when set locally.
+  const creds = await (awsClientOptions().credentials || fromNodeProviderChain())();
   const expires = creds.expiration ? Math.round((creds.expiration - Date.now()) / 60000) : null;
   print(
     `credentials: ${creds.accessKeyId.slice(0, 4)}…${creds.accessKeyId.slice(-4)}` +
@@ -42,7 +44,7 @@ try {
       `  region: ${region}\n`
   );
 } catch (err) {
-  print(`credentials: none found (${err.message}). Sign in with \`aws sso login\` or export AWS_* variables.\n`);
+  print(`credentials: none found (${err.message}). Sign in (\`aws sso login --profile <p>\` and set BEDROCK_AWS_PROFILE=<p>) or export AWS_* variables.\n`);
 }
 
 const probeTool = [{ name: "no_data_needed", description: "Call when no live data is needed.", input_schema: { type: "object", properties: {} } }];
