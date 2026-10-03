@@ -56,6 +56,9 @@ export default $config({
       TRADIER_API_TOKEN: optional("TradierApiToken"),
       AUTH_GOOGLE_ID: optional("AuthGoogleId"),
       AUTH_GOOGLE_SECRET: optional("AuthGoogleSecret"),
+      AUTH_APPLE_ID: optional("AuthAppleId"),
+      // A JWT from `npm run apple:secret`; Apple caps it at 6 months.
+      AUTH_APPLE_SECRET: optional("AuthAppleSecret"),
       RESEND_API_KEY: optional("ResendApiKey"),
       CRON_SECRET: optional("CronSecret"),
       TURNSTILE_SECRET_KEY: optional("TurnstileSecretKey"),

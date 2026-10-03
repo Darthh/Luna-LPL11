@@ -3,13 +3,13 @@ import Credentials from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
-import { authConfig, googleEnabled } from "@/auth.config";
+import { authConfig, googleEnabled, appleEnabled } from "@/auth.config";
 
 // Google needs OAuth credentials the user must create themselves (see
 // README "Accounts" section). Whether it is registered is decided in
 // auth.config.js, which middleware shares; re-exported here so the existing
 // importers of "@/auth" keep working.
-export { googleEnabled };
+export { googleEnabled, appleEnabled };
 
 // Spreads auth.config.js (which middleware also uses) and adds the parts that
 // need the database: the Prisma adapter and the Credentials provider.
