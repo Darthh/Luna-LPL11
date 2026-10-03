@@ -230,6 +230,10 @@ export async function POST(request) {
         });
         await answer.finalMessage();
       } catch (err) {
+        if (aws && err?.name === "GuardrailIntervened" && !streamed) {
+          send("text", err.message);
+          return;
+        }
         if (aws) {
           // The direct path already logged its failures in withFailover; the
           // AgentCore path is logged here, with its cause.

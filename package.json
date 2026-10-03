@@ -17,7 +17,8 @@
     "postinstall": "prisma generate",
     "db:migrate": "node scripts/dsql-migrate.mjs",
     "db:migrate:dsql": "node scripts/dsql-migrate.mjs",
-    "check:bedrock": "node scripts/check-bedrock.mjs"
+    "check:bedrock": "node scripts/check-bedrock.mjs",
+    "smoke:site": "node scripts/smoke-site.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.116.0",

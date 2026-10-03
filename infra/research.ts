@@ -1,6 +1,8 @@
 /// <reference path="../.sst/platform/config.d.ts" />
 
-export async function researchInfrastructure(sst: any, modelPermissions: any[]) {
+// extraEnvironment: settings the agent runtime and worker share with the site
+// (guardrail, prompt caching), so every model call follows the same policy.
+export async function researchInfrastructure(sst: any, modelPermissions: any[], extraEnvironment: Record<string, any> = {}) {
   const pulumi = await import("../.sst/platform/node_modules/@pulumi/pulumi/index.js");
   const aws = await import("../.sst/platform/node_modules/@pulumi/aws/index.js");
   const { readFileSync } = await import("node:fs");
@@ -47,6 +49,7 @@ export async function researchInfrastructure(sst: any, modelPermissions: any[]) 
   const environment = {
     BEDROCK_REGION: region, RESEARCH_BUCKET: bucket.name, RESEARCH_INDEX_ARN: vectors.outputs.apply(v => v.IndexArn),
     RESEARCH_WORKGROUP: workgroup.name, RESEARCH_TABLE_CATALOG: `s3tablescatalog/${prefix}-history`,
+    ...extraEnvironment,
   };
   const dataPermissions = [
     { actions: ["s3:GetObject", "s3:PutObject"], resources: [pulumi.interpolate`${bucket.arn}/*`] },
