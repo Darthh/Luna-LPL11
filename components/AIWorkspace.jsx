@@ -160,388 +160,388 @@ function StockQuoteCard({ card }) {
             {hoverChange >= 0 ? "+" : ""}{currency.format(hoverChange)}{hoverChangePct !== null ? ` (${hoverChangePct >= 0 ? "+" : ""}${hoverChangePct.toFixed(2)}%)` : ""}
           </b></div>
         </div>}
-        </div>
+      </div>
 
-        <dl className="ai-stock-stats">
-          <div><dt>Open</dt><dd>{Number.isFinite(card.open) ? currency.format(card.open) : "—"}</dd></div>
-          <div><dt>Day range</dt><dd>{Number.isFinite(card.dayLow) && Number.isFinite(card.dayHigh) ? `${currency.format(card.dayLow)} – ${currency.format(card.dayHigh)}` : "—"}</dd></div>
-          <div><dt>Volume</dt><dd>{Number.isFinite(card.volume) ? compactNumber.format(card.volume) : "—"}</dd></div>
-          <div><dt>Market cap</dt><dd>{Number.isFinite(card.marketCap) ? compactCurrency.format(card.marketCap) : "—"}</dd></div>
-          <div><dt>Trailing P/E</dt><dd>{Number.isFinite(card.trailingPE) ? card.trailingPE.toFixed(2) : "—"}</dd></div>
-          <div><dt>Forward P/E</dt><dd>{Number.isFinite(card.forwardPE) ? card.forwardPE.toFixed(2) : "—"}</dd></div>
-          <div><dt>Profit margin</dt><dd>{Number.isFinite(card.profitMargin) ? `${(card.profitMargin * 100).toFixed(1)}%` : "—"}</dd></div>
-        </dl>
-      </section>
-    );
+      <dl className="ai-stock-stats">
+        <div><dt>Open</dt><dd>{Number.isFinite(card.open) ? currency.format(card.open) : "—"}</dd></div>
+        <div><dt>Day range</dt><dd>{Number.isFinite(card.dayLow) && Number.isFinite(card.dayHigh) ? `${currency.format(card.dayLow)} – ${currency.format(card.dayHigh)}` : "—"}</dd></div>
+        <div><dt>Volume</dt><dd>{Number.isFinite(card.volume) ? compactNumber.format(card.volume) : "—"}</dd></div>
+        <div><dt>Market cap</dt><dd>{Number.isFinite(card.marketCap) ? compactCurrency.format(card.marketCap) : "—"}</dd></div>
+        <div><dt>Trailing P/E</dt><dd>{Number.isFinite(card.trailingPE) ? card.trailingPE.toFixed(2) : "—"}</dd></div>
+        <div><dt>Forward P/E</dt><dd>{Number.isFinite(card.forwardPE) ? card.forwardPE.toFixed(2) : "—"}</dd></div>
+        <div><dt>Profit margin</dt><dd>{Number.isFinite(card.profitMargin) ? `${(card.profitMargin * 100).toFixed(1)}%` : "—"}</dd></div>
+      </dl>
+    </section>
+  );
+}
+
+function localChatUrl(value) {
+  const url = new URL(value);
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    throw new Error("The local endpoint must use http or https.");
   }
+  const base = url.toString().replace(/\/$/, "");
+  return base.endsWith("/chat/completions") ? base : `${base}/chat/completions`;
+}
 
-  function localChatUrl(value) {
-    const url = new URL(value);
-    if (url.protocol !== "http:" && url.protocol !== "https:") {
-      throw new Error("The local endpoint must use http or https.");
-    }
-    const base = url.toString().replace(/\/$/, "");
-    return base.endsWith("/chat/completions") ? base : `${base}/chat/completions`;
+async function readHostedResponse(response, onText, onData = () => {}) {
+  if (!response.ok || !response.body) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.error || `The hosted model is unavailable (${response.status}).`);
   }
-
-  async function readHostedResponse(response, onText, onData = () => {}) {
-    if (!response.ok || !response.body) {
-      const body = await response.json().catch(() => null);
-      throw new Error(body?.error || `The hosted model is unavailable (${response.status}).`);
-    }
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-    let answer = "";
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() || "";
-      for (const raw of lines) {
-        if (!raw.trim()) continue;
-        const event = JSON.parse(raw);
-        if (event.t === "text") {
-          answer += event.v;
-          onText(answer);
-        } else if (event.t === "error") {
-          throw new Error(event.v);
-        } else if (event.t === "data") {
-          onData(event.v);
-        }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let answer = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || "";
+    for (const raw of lines) {
+      if (!raw.trim()) continue;
+      const event = JSON.parse(raw);
+      if (event.t === "text") {
+        answer += event.v;
+        onText(answer);
+      } else if (event.t === "error") {
+        throw new Error(event.v);
+      } else if (event.t === "data") {
+        onData(event.v);
       }
     }
+  }
+  return answer;
+}
+
+async function readLocalResponse(response, onText) {
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(body.slice(0, 240) || `Local model returned ${response.status}.`);
+  }
+  if (!response.body) throw new Error("The local model returned no response.");
+
+  // Some OpenAI-compatible servers ignore `stream: true` and return one JSON
+  // document. Supporting both shapes keeps LM Studio and smaller llama.cpp
+  // builds from looking disconnected when they are not.
+  if (response.headers.get("content-type")?.includes("application/json")) {
+    const event = await response.json();
+    const answer = event.choices?.[0]?.message?.content ?? "";
+    if (answer) onText(answer);
     return answer;
   }
 
-  async function readLocalResponse(response, onText) {
-    if (!response.ok) {
-      const body = await response.text();
-      throw new Error(body.slice(0, 240) || `Local model returned ${response.status}.`);
-    }
-    if (!response.body) throw new Error("The local model returned no response.");
-
-    // Some OpenAI-compatible servers ignore `stream: true` and return one JSON
-    // document. Supporting both shapes keeps LM Studio and smaller llama.cpp
-    // builds from looking disconnected when they are not.
-    if (response.headers.get("content-type")?.includes("application/json")) {
-      const event = await response.json();
-      const answer = event.choices?.[0]?.message?.content ?? "";
-      if (answer) onText(answer);
-      return answer;
-    }
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-    let answer = "";
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() || "";
-      for (const line of lines) {
-        const raw = line.replace(/^data:\s*/, "").trim();
-        if (!raw || raw === "[DONE]") continue;
-        const event = JSON.parse(raw);
-        const delta = event.choices?.[0]?.delta?.content ?? event.choices?.[0]?.message?.content ?? "";
-        if (delta) {
-          answer += delta;
-          onText(answer);
-        }
-      }
-    }
-    const tail = buffer.replace(/^data:\s*/, "").trim();
-    if (tail && tail !== "[DONE]") {
-      const event = JSON.parse(tail);
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let answer = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || "";
+    for (const line of lines) {
+      const raw = line.replace(/^data:\s*/, "").trim();
+      if (!raw || raw === "[DONE]") continue;
+      const event = JSON.parse(raw);
       const delta = event.choices?.[0]?.delta?.content ?? event.choices?.[0]?.message?.content ?? "";
       if (delta) {
         answer += delta;
         onText(answer);
       }
     }
-    return answer;
+  }
+  const tail = buffer.replace(/^data:\s*/, "").trim();
+  if (tail && tail !== "[DONE]") {
+    const event = JSON.parse(tail);
+    const delta = event.choices?.[0]?.delta?.content ?? event.choices?.[0]?.message?.content ?? "";
+    if (delta) {
+      answer += delta;
+      onText(answer);
+    }
+  }
+  return answer;
+}
+
+export default function AIWorkspace({ chatId = null }) {
+  const { data: session, status: authStatus } = useSession();
+  const accountId = session?.user?.id;
+  const [accountStatus, setAccountStatus] = useState("");
+  const [webSearch, setWebSearch] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const modelWindow = useRef(null);
+  const modelTrigger = useRef(null);
+  const [mode, setMode] = useState("hosted");
+  const [installedModels, setInstalledModels] = useState([]);
+  const [ollamaModel, setOllamaModel] = useState("");
+  const [modelStatus, setModelStatus] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
+  const [hostedModel, setHostedModel] = useState(DEFAULT_HOSTED_MODEL);
+  const [local, setLocal] = useState({ endpoint: "http://localhost:11434/v1", model: "qwen3.8:27b", key: "", remember: false });
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [documentIds, setDocumentIds] = useState([]);
+  const [memoryScope, setMemoryScope] = useState(null);
+  const scroller = useRef(null);
+  const activeChatId = useRef(chatId);
+  const accountRef = useRef(accountId);
+
+  useEffect(() => {
+    if (authStatus === "loading") return;
+    setChatAccount(accountId);
+    accountRef.current = accountId;
+    activeChatId.current = chatId;
+    const chat = chatId ? readChats().find((entry) => entry.id === chatId) : null;
+    // Browser storage is only available after hydration.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMessages(chat?.messages || []);
+    setInput("");
+    setError("");
+    setBusy(false);
+    setAccountStatus("");
+    if (!chatId) {
+      setMode("hosted");
+      setHostedModel(DEFAULT_HOSTED_MODEL);
+    }
+  }, [chatId, accountId, authStatus]);
+
+  useEffect(() => {
+    const reset = () => {
+      activeChatId.current = null;
+      setMessages([]);
+      setInput("");
+      setError("");
+      setMode("hosted");
+      setHostedModel(DEFAULT_HOSTED_MODEL);
+      setSettingsOpen(false);
+      setDocumentIds([]);
+    };
+    window.addEventListener("luna-new-chat", reset);
+    return () => window.removeEventListener("luna-new-chat", reset);
+  }, []);
+
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(LOCAL_KEY) || "null");
+      const key = sessionStorage.getItem(LOCAL_SECRET_KEY) || "";
+      // Browser storage does not exist during the server render; mirror it
+      // once after hydration, as DashboardProvider does for the panel layout.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (saved) setLocal((current) => ({ ...current, ...saved, key }));
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    if (scroller.current) scroller.current.scrollTop = scroller.current.scrollHeight;
+  }, [messages]);
+
+  useEffect(() => {
+    if (!settingsOpen) return;
+    function close(event) {
+      if (event.type === "keydown" && event.key !== "Escape") return;
+      if (event.type === "pointerdown" && (modelWindow.current?.contains(event.target) || modelTrigger.current?.contains(event.target))) return;
+      setSettingsOpen(false);
+      if (event.type === "keydown") modelTrigger.current?.focus();
+    }
+    document.addEventListener("pointerdown", close);
+    document.addEventListener("keydown", close);
+    return () => {
+      document.removeEventListener("pointerdown", close);
+      document.removeEventListener("keydown", close);
+    };
+  }, [settingsOpen]);
+
+  function saveLocal(next) {
+    setLocal(next);
+    try {
+      localStorage.setItem(LOCAL_KEY, JSON.stringify({ endpoint: next.endpoint, model: next.model, remember: next.remember }));
+      if (next.remember && next.key) sessionStorage.setItem(LOCAL_SECRET_KEY, next.key);
+      else sessionStorage.removeItem(LOCAL_SECRET_KEY);
+    } catch {}
   }
 
-  export default function AIWorkspace({ chatId = null }) {
-    const { data: session, status: authStatus } = useSession();
-    const accountId = session?.user?.id;
-    const [accountStatus, setAccountStatus] = useState("");
-    const [webSearch, setWebSearch] = useState(false);
-    const [searching, setSearching] = useState(false);
-    const modelWindow = useRef(null);
-    const modelTrigger = useRef(null);
-    const [mode, setMode] = useState("hosted");
-    const [installedModels, setInstalledModels] = useState([]);
-    const [ollamaModel, setOllamaModel] = useState("");
-    const [modelStatus, setModelStatus] = useState("");
-    const [refreshing, setRefreshing] = useState(false);
-    const [hostedModel, setHostedModel] = useState(DEFAULT_HOSTED_MODEL);
-    const [local, setLocal] = useState({ endpoint: "http://localhost:11434/v1", model: "qwen3.8:27b", key: "", remember: false });
-    const [settingsOpen, setSettingsOpen] = useState(false);
-    const [messages, setMessages] = useState([]);
-    const [input, setInput] = useState("");
-    const [busy, setBusy] = useState(false);
-    const [error, setError] = useState("");
-    const [documentIds, setDocumentIds] = useState([]);
-    const [memoryScope, setMemoryScope] = useState(null);
-    const scroller = useRef(null);
-    const activeChatId = useRef(chatId);
-    const accountRef = useRef(accountId);
-
-    useEffect(() => {
-      if (authStatus === "loading") return;
-      setChatAccount(accountId);
-      accountRef.current = accountId;
-      activeChatId.current = chatId;
-      const chat = chatId ? readChats().find((entry) => entry.id === chatId) : null;
-      // Browser storage is only available after hydration.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setMessages(chat?.messages || []);
-      setInput("");
-      setError("");
-      setBusy(false);
-      setAccountStatus("");
-      if (!chatId) {
-        setMode("hosted");
-        setHostedModel(DEFAULT_HOSTED_MODEL);
-      }
-    }, [chatId, accountId, authStatus]);
-
-    useEffect(() => {
-      const reset = () => {
-        activeChatId.current = null;
-        setMessages([]);
-        setInput("");
-        setError("");
-        setMode("hosted");
-        setHostedModel(DEFAULT_HOSTED_MODEL);
-        setSettingsOpen(false);
-        setDocumentIds([]);
-      };
-      window.addEventListener("luna-new-chat", reset);
-      return () => window.removeEventListener("luna-new-chat", reset);
-    }, []);
-
-    useEffect(() => {
-      try {
-        const saved = JSON.parse(localStorage.getItem(LOCAL_KEY) || "null");
-        const key = sessionStorage.getItem(LOCAL_SECRET_KEY) || "";
-        // Browser storage does not exist during the server render; mirror it
-        // once after hydration, as DashboardProvider does for the panel layout.
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        if (saved) setLocal((current) => ({ ...current, ...saved, key }));
-      } catch {}
-    }, []);
-
-    useEffect(() => {
-      if (scroller.current) scroller.current.scrollTop = scroller.current.scrollHeight;
-    }, [messages]);
-
-    useEffect(() => {
-      if (!settingsOpen) return;
-      function close(event) {
-        if (event.type === "keydown" && event.key !== "Escape") return;
-        if (event.type === "pointerdown" && (modelWindow.current?.contains(event.target) || modelTrigger.current?.contains(event.target))) return;
-        setSettingsOpen(false);
-        if (event.type === "keydown") modelTrigger.current?.focus();
-      }
-      document.addEventListener("pointerdown", close);
-      document.addEventListener("keydown", close);
-      return () => {
-        document.removeEventListener("pointerdown", close);
-        document.removeEventListener("keydown", close);
-      };
-    }, [settingsOpen]);
-
-    function saveLocal(next) {
-      setLocal(next);
-      try {
-        localStorage.setItem(LOCAL_KEY, JSON.stringify({ endpoint: next.endpoint, model: next.model, remember: next.remember }));
-        if (next.remember && next.key) sessionStorage.setItem(LOCAL_SECRET_KEY, next.key);
-        else sessionStorage.removeItem(LOCAL_SECRET_KEY);
-      } catch {}
+  async function refreshOllama() {
+    setRefreshing(true);
+    setModelStatus("Connecting to Ollama…");
+    try {
+      const names = await ollamaModels();
+      setInstalledModels(names);
+      setOllamaModel(current => names.includes(current) ? current : names[0] || "");
+      setModelStatus(names.length ? "Connected to Ollama. Enable Web search to research online." : "No chat models installed. Run ollama pull llama3.2, then refresh models.");
+    } catch (reason) {
+      setInstalledModels([]);
+      setOllamaModel("");
+      setModelStatus(reason.message);
+    } finally {
+      setRefreshing(false);
     }
+  }
 
-    async function refreshOllama() {
-      setRefreshing(true);
-      setModelStatus("Connecting to Ollama…");
-      try {
-        const names = await ollamaModels();
-        setInstalledModels(names);
-        setOllamaModel(current => names.includes(current) ? current : names[0] || "");
-        setModelStatus(names.length ? "Connected to Ollama. Enable Web search to research online." : "No chat models installed. Run ollama pull llama3.2, then refresh models.");
-      } catch (reason) {
-        setInstalledModels([]);
-        setOllamaModel("");
-        setModelStatus(reason.message);
-      } finally {
-        setRefreshing(false);
-      }
-    }
+  function switchMode(next) {
+    setMode(next);
+    setError("");
+    if (next === "ollama") refreshOllama();
+  }
 
-    function switchMode(next) {
-      setMode(next);
-      setError("");
-      if (next === "ollama") refreshOllama();
-    }
+  async function send(value) {
+    const question = value.trim();
+    if (!question || busy || authStatus === "loading") return;
+    const ownerAtStart = accountId;
+    const lookups = stockLookupsForMessages(question);
+    const stockCardsPromise = loadStockCards(lookups);
+    const history = [...messages.filter((message) => !message.error), { role: "user", content: question }];
+    const conversationId = activeChatId.current || crypto.randomUUID();
+    activeChatId.current = conversationId;
+    // Persist the user's words even if the model request fails.
+    saveChat({ id: conversationId, title: history[0]?.content.slice(0, 60) || "Chat", messages: history });
+    setInput("");
+    setError("");
+    setBusy(true);
+    setSettingsOpen(false);
+    setMessages([...history, { role: "assistant", content: "" }]);
+    let sources = [];
+    let drafts = [];
+    const isCurrent = () => accountRef.current === ownerAtStart && activeChatId.current === conversationId;
+    const update = (content) => { if (isCurrent()) setMessages((current) => [
+      ...current.slice(0, -1),
+      { ...current.at(-1), role: "assistant", content, sources, model: activeLabel },
+    ]); };
 
-    async function send(value) {
-      const question = value.trim();
-      if (!question || busy || authStatus === "loading") return;
-      const ownerAtStart = accountId;
-      const lookups = stockLookupsForMessages(question);
-      const stockCardsPromise = loadStockCards(lookups);
-      const history = [...messages.filter((message) => !message.error), { role: "user", content: question }];
-      const conversationId = activeChatId.current || crypto.randomUUID();
-      activeChatId.current = conversationId;
-      // Persist the user's words even if the model request fails.
-      saveChat({ id: conversationId, title: history[0]?.content.slice(0, 60) || "Chat", messages: history });
-      setInput("");
-      setError("");
-      setBusy(true);
-      setSettingsOpen(false);
-      setMessages([...history, { role: "assistant", content: "" }]);
-      let sources = [];
-      let drafts = [];
-      const isCurrent = () => accountRef.current === ownerAtStart && activeChatId.current === conversationId;
-      const update = (content) => { if (isCurrent()) setMessages((current) => [
+    let pending = true;
+    stockCardsPromise.then((stockCards) => {
+      if (!pending || !isCurrent() || !stockCards.length) return;
+      setMessages((current) => [
         ...current.slice(0, -1),
-        { ...current.at(-1), role: "assistant", content, sources, model: activeLabel },
-      ]); };
+        { ...current.at(-1), stockCards },
+      ]);
+    });
 
-      let pending = true;
-      stockCardsPromise.then((stockCards) => {
-        if (!pending || !isCurrent() || !stockCards.length) return;
-        setMessages((current) => [
-          ...current.slice(0, -1),
-          { ...current.at(-1), stockCards },
-        ]);
-      });
-
-      try {
-        let answer;
-        let outgoing = history.map(({ role, content }) => ({ role, content }));
-        if (accountId && mode !== "hosted") {
-          try {
-            const workspace = await workspaceRequest("/api/account-workspace", { query: question });
-            outgoing = localWorkspaceMessages(outgoing, workspace);
-            setAccountStatus(Object.values(workspace.sections).some(s => s.status !== "ready") ? "Some account data is unavailable" : "Account data connected");
-          } catch (e) {
-            setAccountStatus(e.message);
-            throw new Error("Could not read your account data. Please retry.");
-          }
-        }
-        const excluded = history.slice(-12).filter((message) => message.role === "user").map((message) => message.content);
+    try {
+      let answer;
+      let outgoing = history.map(({ role, content }) => ({ role, content }));
+      if (accountId && mode !== "hosted") {
         try {
-          const response = await fetch("/api/chat-memory", {
-            method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ question, excluded }),
-            signal: AbortSignal.timeout(8000),
-          });
-          if (response.ok) {
-            const { memories } = await response.json();
-            outgoing = memoryMessages(outgoing, memories);
-            setMemoryScope("account");
-          } else if (response.status === 401) {
-            outgoing = memoryMessages(outgoing, memoryFromChats(readChats(), question, excluded));
-            setMemoryScope("browser");
-          } else {
-            setMemoryScope("unavailable");
-          }
-        } catch {
+          const workspace = await workspaceRequest("/api/account-workspace", { query: question });
+          outgoing = localWorkspaceMessages(outgoing, workspace);
+          setAccountStatus(Object.values(workspace.sections).some(s => s.status !== "ready") ? "Some account data is unavailable" : "Account data connected");
+        } catch (e) {
+          setAccountStatus(e.message);
+          throw new Error("Could not read your account data. Please retry.");
+        }
+      }
+      const excluded = history.slice(-12).filter((message) => message.role === "user").map((message) => message.content);
+      try {
+        const response = await fetch("/api/chat-memory", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question, excluded }),
+          signal: AbortSignal.timeout(8000),
+        });
+        if (response.ok) {
+          const { memories } = await response.json();
+          outgoing = memoryMessages(outgoing, memories);
+          setMemoryScope("account");
+        } else if (response.status === 401) {
+          outgoing = memoryMessages(outgoing, memoryFromChats(readChats(), question, excluded));
+          setMemoryScope("browser");
+        } else {
           setMemoryScope("unavailable");
         }
-        if (webSearch) {
-          setSearching(true);
-          const response = await fetch("/api/ai-research", {
-            method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ query: question }),
-          });
-          const result = await response.json();
-          if (!response.ok) throw new Error(result.error || "Web search failed.");
-          sources = result.sources;
-          outgoing = researchMessages(outgoing, sources, result.retrievedAt);
-          setSearching(false);
-          update("");
-        }
-        if (mode === "hosted") {
-          const response = await fetch("/api/ai-chat", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ messages: outgoing, model: hostedModel, webResearch: webSearch, conversationId, documentIds, workspace: true }),
-          });
-          answer = await readHostedResponse(response, update, data => {
-            if (data?.result?.draft && drafts.length < 3) drafts.push(data.result.draft);
-            for (const source of data?.result?.sources || []) {
-              if (!sources.some(existing => existing.url === source.url)) sources.push(source);
-            }
-          });
-        } else if (mode === "ollama") {
-          answer = await ollamaChat({ model: ollamaModel, messages: outgoing }, update);
-        } else {
-          if (!local.model.trim()) throw new Error("Enter the model name exposed by your local server.");
-          const response = await fetch(localChatUrl(local.endpoint), {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              ...(local.key ? { Authorization: `Bearer ${local.key}` } : {}),
-            },
-            body: JSON.stringify({ model: local.model.trim(), messages: outgoing, stream: true }),
-          });
-          answer = await readLocalResponse(response, update);
-        }
-        if (!answer?.trim()) throw new Error("The model returned an empty answer.");
-        if (!isCurrent()) return;
-        const parsed = parseDocumentAnswer(answer);
-        answer = parsed.content || "Your document is ready to preview and download.";
-        drafts.push(...parsed.drafts);
-        drafts = drafts.slice(0, 3);
-        for (const draft of drafts) {
-          if (!isCurrent()) return;
-          if (requestedSave(question, draft.destination)) {
-            try { draft.savedId = (await saveDocument(draft)).id; }
-            catch (e) { draft.saveError = `Not saved: ${e.message}`; }
-          }
-        }
-        const stockCards = await stockCardsPromise;
-        const answerLookups = stockLookupsForAnswer(answer).filter(lookup =>
-          !lookups.some(existing => existing.symbol === lookup.symbol) &&
-          !stockCards.some(card => card.symbol === lookup.symbol));
-        stockCards.push(...await loadStockCards(answerLookups));
-        if (!isCurrent()) return;
-        const assistantMessage = { role: "assistant", content: answer, sources, model: activeLabel, stockCards, documents: drafts };
-        setMessages([...history, assistantMessage]);
-        saveChat({
-          id: conversationId,
-          title: history.find((message) => message.role === "user")?.content.slice(0, 60) || "Chat",
-          messages: [...history, assistantMessage],
-        });
-      } catch (reason) {
-        if (!isCurrent()) return;
-        const message = reason instanceof Error ? reason.message : String(reason);
-        setError(message);
-        const stockCards = await stockCardsPromise;
-        setMessages((current) => [...current.slice(0, -1), { role: "assistant", content: message, error: true, stockCards }]);
-      } finally {
-        pending = false;
-        if (isCurrent()) { setSearching(false); setBusy(false); }
+      } catch {
+        setMemoryScope("unavailable");
       }
+      if (webSearch) {
+        setSearching(true);
+        const response = await fetch("/api/ai-research", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: question }),
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "Web search failed.");
+        sources = result.sources;
+        outgoing = researchMessages(outgoing, sources, result.retrievedAt);
+        setSearching(false);
+        update("");
+      }
+      if (mode === "hosted") {
+        const response = await fetch("/api/ai-chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messages: outgoing, model: hostedModel, webResearch: webSearch, conversationId, documentIds, workspace: true }),
+        });
+        answer = await readHostedResponse(response, update, data => {
+          if (data?.result?.draft && drafts.length < 3) drafts.push(data.result.draft);
+          for (const source of data?.result?.sources || []) {
+            if (!sources.some(existing => existing.url === source.url)) sources.push(source);
+          }
+        });
+      } else if (mode === "ollama") {
+        answer = await ollamaChat({ model: ollamaModel, messages: outgoing }, update);
+      } else {
+        if (!local.model.trim()) throw new Error("Enter the model name exposed by your local server.");
+        const response = await fetch(localChatUrl(local.endpoint), {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(local.key ? { Authorization: `Bearer ${local.key}` } : {}),
+          },
+          body: JSON.stringify({ model: local.model.trim(), messages: outgoing, stream: true }),
+        });
+        answer = await readLocalResponse(response, update);
+      }
+      if (!answer?.trim()) throw new Error("The model returned an empty answer.");
+      if (!isCurrent()) return;
+      const parsed = parseDocumentAnswer(answer);
+      answer = parsed.content || "Your document is ready to preview and download.";
+      drafts.push(...parsed.drafts);
+      drafts = drafts.slice(0, 3);
+      for (const draft of drafts) {
+        if (!isCurrent()) return;
+        if (requestedSave(question, draft.destination)) {
+          try { draft.savedId = (await saveDocument(draft)).id; }
+          catch (e) { draft.saveError = `Not saved: ${e.message}`; }
+        }
+      }
+      const stockCards = await stockCardsPromise;
+      const answerLookups = stockLookupsForAnswer(answer).filter(lookup =>
+        !lookups.some(existing => existing.symbol === lookup.symbol) &&
+        !stockCards.some(card => card.symbol === lookup.symbol));
+      stockCards.push(...await loadStockCards(answerLookups));
+      if (!isCurrent()) return;
+      const assistantMessage = { role: "assistant", content: answer, sources, model: activeLabel, stockCards, documents: drafts };
+      setMessages([...history, assistantMessage]);
+      saveChat({
+        id: conversationId,
+        title: history.find((message) => message.role === "user")?.content.slice(0, 60) || "Chat",
+        messages: [...history, assistantMessage],
+      });
+    } catch (reason) {
+      if (!isCurrent()) return;
+      const message = reason instanceof Error ? reason.message : String(reason);
+      setError(message);
+      const stockCards = await stockCardsPromise;
+      setMessages((current) => [...current.slice(0, -1), { role: "assistant", content: message, error: true, stockCards }]);
+    } finally {
+      pending = false;
+      if (isCurrent()) { setSearching(false); setBusy(false); }
     }
+  }
 
-    const activeLabel = mode === "hosted"
-      ? HOSTED_MODELS.find((model) => model.id === hostedModel)?.label
-      : mode === "ollama" ? ollamaModel || "Ollama" : local.model || "Local model";
+  const activeLabel = mode === "hosted"
+    ? HOSTED_MODELS.find((model) => model.id === hostedModel)?.label
+    : mode === "ollama" ? ollamaModel || "Ollama" : local.model || "Local model";
 
-    return (
-      <section className="ai-workspace" aria-label="Luna AI workspace">
-        <div className={`ai-stage${messages.length ? " has-chat" : ""}`}>
-          <header className="ai-welcome">
-            <span className="ai-mark" aria-hidden="true"><LunaAILogo /></span>
-            <div>
-              <h2>{messages.length ? activeLabel : <ChatGreeting />}</h2>
+  return (
+    <section className="ai-workspace" aria-label="Luna AI workspace">
+      <div className={`ai-stage${messages.length ? " has-chat" : ""}`}>
+        <header className="ai-welcome">
+          <span className="ai-mark" aria-hidden="true"><LunaAILogo /></span>
+          <div>
+            <h2>{messages.length ? activeLabel : <ChatGreeting />}</h2>
           </div>
         </header>
 
