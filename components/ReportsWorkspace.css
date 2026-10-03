@@ -958,6 +958,15 @@
 .rp-page-editor {
   width: 590px;
 }
+.rp-template-dialog {
+  width: 630px;
+}
+.rp-template-dialog footer {
+  flex-wrap: wrap;
+}
+.rp-template-dialog footer .rp-btn {
+  white-space: normal;
+}
 .rp-checks {
   display: grid;
   grid-template-columns: 1fr 1fr;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReportFlow from "@/components/ReportBuilder";
 import TickerInput from "@/components/TickerInput";
 import PortfolioWheel from "@/components/PortfolioWheel";
@@ -407,19 +407,48 @@ export default function AdvisorWorkspace({ kind }) {
         />
       )}
       {modal === "report" && (
-        <ReportFlow
+        <AdvisorReportFlow
           portfolios={rows.map(row => ({ ...row, kind: kind === "models" ? "model" : "client" }))}
           preparedBy={session?.user?.name || ""}
+          userId={userId}
           onClose={() => setModal(null)}
-          onSave={async row => {
-            if (userId) await workspaceRequest("/api/advisor-items?kind=reports", row);
-            else save("reports", [{ ...row, id: crypto.randomUUID(), opened: new Date().toISOString() }, ...load("reports")]);
-            setModal(null);
-          }}
         />
       )}
     </div>
   );
+}
+
+function AdvisorReportFlow({ portfolios, preparedBy, userId, onClose }) {
+  const persistedReport = useRef(null);
+  const active = useRef(true);
+  useEffect(() => {
+    active.current = true;
+    return () => { active.current = false; };
+  }, []);
+  return <ReportFlow
+    portfolios={portfolios}
+    preparedBy={preparedBy}
+    onClose={onClose}
+    onSave={async (row, isTemplate, keepOpen, templateTarget) => {
+      const previous = isTemplate ? templateTarget : persistedReport.current;
+      let item;
+      if (userId) {
+        ({ item } = await workspaceRequest(
+          "/api/advisor-items?kind=reports",
+          { ...row, ...(previous ? { id: previous.id, revision: previous.revision } : {}) },
+          previous ? "PUT" : "POST",
+        ));
+      } else {
+        item = { ...row, id: previous?.id || crypto.randomUUID(), opened: new Date().toISOString() };
+        localStorage.setItem(KEY("reports"), JSON.stringify([item, ...load("reports").filter(r => r.id !== item.id)]));
+      }
+      if (!isTemplate) {
+        persistedReport.current = item;
+        if (!keepOpen && active.current) onClose();
+      }
+      return item;
+    }}
+  />;
 }
 
 function ReportEditor({ row, disabled, onClose, onSave }) {

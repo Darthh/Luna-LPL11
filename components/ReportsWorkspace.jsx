@@ -78,12 +78,7 @@ export default function ReportsWorkspace() {
             (r) =>
               r.id === new URLSearchParams(window.location.search).get("item"),
           );
-          if (item)
-            setFlow(
-              item.isTemplate
-                ? { ...item, id: undefined, isTemplate: true }
-                : item,
-            );
+          if (item) setFlow(item);
         } else {
           const records = readLocal("reports");
           if (!active) return;
@@ -116,13 +111,18 @@ export default function ReportsWorkspace() {
     };
   }, [userId, status]);
   const close = useCallback(() => setFlow(null), []);
-  const persist = async (record, isTemplate, keepOpen = false) => {
+  const persist = async (
+    record,
+    isTemplate,
+    keepOpen = false,
+    templateTarget = null,
+  ) => {
     const owner = userId;
+    const previous = isTemplate
+      ? templateTarget
+      : flow?.persisted || (flow?.id && !flow.isTemplate ? flow : null);
     let item;
     if (userId) {
-      const previous = !isTemplate
-        ? flow?.persisted || (flow?.id && !flow.isTemplate ? flow : null)
-        : null;
       ({ item } = await workspaceRequest(
         "/api/advisor-items?kind=reports",
         {
@@ -134,10 +134,7 @@ export default function ReportsWorkspace() {
     } else {
       item = {
         ...record,
-        id:
-          !isTemplate && (flow?.persisted?.id || flow?.id) && !flow.isTemplate
-            ? flow.persisted?.id || flow.id
-            : crypto.randomUUID(),
+        id: previous?.id || crypto.randomUUID(),
         opened: new Date().toISOString(),
       };
       localStorage.setItem(
@@ -153,6 +150,7 @@ export default function ReportsWorkspace() {
     if (!isTemplate && !keepOpen) close();
     else if (!isTemplate && keepOpen)
       setFlow((f) => ({ ...f, persisted: item }));
+    return item;
   };
   const duplicate = async (row) => {
     setBusy(true);
@@ -369,7 +367,6 @@ export default function ReportsWorkspace() {
                           r.isTemplate
                             ? {
                                 ...r,
-                                id: undefined,
                                 report: {
                                   ...structuredClone(r.report),
                                   portfolios: [],
@@ -402,6 +399,15 @@ export default function ReportsWorkspace() {
                   <td>{new Date(r.opened).toLocaleDateString()}</td>
                   <td>
                     <div className="rp-row-actions">
+                      {r.isTemplate && (
+                        <button
+                          className="rp-btn"
+                          disabled={busy}
+                          onClick={() => setFlow({ ...r, editTemplate: true })}
+                        >
+                          Edit Template
+                        </button>
+                      )}
                       <button
                         className="rp-btn"
                         disabled={busy}

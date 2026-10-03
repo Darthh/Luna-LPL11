@@ -17,12 +17,21 @@ controls inherit Luna's active theme.
   custom page removal, continuation-page navigation and live data refresh.
 - Edit Page changes headings, exhibits, available table columns, key statistics,
   top holding count, fee and cash sensitivity inputs, and editorial content.
+  Column Selection includes a search field; filtering does not clear selections.
 - Editorial image/text layouts, team biographies, feature cards and market
   graph layouts. Graphs accept market tickers/indices, not economic-series IDs.
 - Cover design, brand color and logo. JPEG/PNG/SVG inputs are limited to 1 MB.
   SVG logos are sanitized and flattened locally before storage and PDF export.
 - Save, reopen, duplicate, search, filter, sort, template reuse, CSV and PDF
   exports. Save and Export performs both actions and surfaces failures.
+- Templates can be edited from the library. Save as Template offers Save as New
+  Template and Overwrite current template, enabled when a saved template was
+  selected or created in the current builder. Overwrites retain the record ID
+  and use its revision to reject stale account writes. Templates retain page,
+  exhibit and style settings without selected holdings or market snapshots.
+- Reports launched from Model or Client Portfolios keep the builder open after
+  saving a template and while Save and Export finishes. Export retries update
+  the same saved report instead of inserting a second copy.
 - New Chat documents can be opened as editable editorial report pages. Imported
   tables and long text continue across PDF pages rather than losing rows.
 

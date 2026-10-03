@@ -518,7 +518,11 @@ function Selection({ report, setReport, portfolios }) {
 }
 function PageEditor({ page, onSave, onClose }) {
   const [draft, setDraft] = useState(structuredClone(page)),
-    [error, setError] = useState("");
+    [error, setError] = useState(""),
+    [columnQuery, setColumnQuery] = useState("");
+  const availableColumns = HOLDING_COLUMNS.filter((column) =>
+    column.toLowerCase().includes(columnQuery.trim().toLowerCase()),
+  );
   const update = (k, value) => setDraft((p) => ({ ...p, [k]: value }));
   return (
     <Dialog
@@ -646,9 +650,16 @@ function PageEditor({ page, onSave, onClose }) {
         )}
         {["Top Holdings", "Holdings Table"].includes(page.name) && (
           <>
-            <h3>Table Columns</h3>
+            <h3>Column Selection</h3>
+            <input
+              type="search"
+              aria-label="Search available columns"
+              placeholder="Search available columns..."
+              value={columnQuery}
+              onChange={(e) => setColumnQuery(e.target.value)}
+            />
             <div className="rp-checks">
-              {HOLDING_COLUMNS.map((c) => (
+              {availableColumns.map((c) => (
                 <label key={c}>
                   <input
                     type="checkbox"
@@ -666,6 +677,9 @@ function PageEditor({ page, onSave, onClose }) {
                 </label>
               ))}
             </div>
+            {!availableColumns.length && (
+              <p className="rp-muted" role="status">No matching columns.</p>
+            )}
             <label>
               Number of top holdings
               <input
@@ -871,7 +885,7 @@ export default function ReportFlow({
   onClose,
   saveDisabled = false,
 }) {
-  const [step, setStep] = useState(initial?.isTemplate ? "selection" : initial ? "builder" : "type");
+  const [step, setStep] = useState(initial?.isTemplate && !initial.editTemplate ? "selection" : initial ? "builder" : "type");
   const [report, setReport] = useState(() =>
     initial
       ? reportFromItem(initial, preparedBy)
@@ -891,10 +905,16 @@ export default function ReportFlow({
     [custom, setCustom] = useState(false),
     [menu, setMenu] = useState(false),
     [templateName, setTemplateName] = useState(null),
+    [templateSource, setTemplateSource] = useState(initial?.isTemplate ? initial : null),
     [toast, setToast] = useState("");
   const drag = useRef(null),
     dialog = useRef(null),
+    active = useRef(true),
     controls = useRef({});
+  useEffect(() => {
+    active.current = true;
+    return () => { active.current = false; };
+  }, []);
   useEffect(() => {
     controls.current = { edit, custom, templateName, menu, onClose };
   }, [edit, custom, templateName, menu, onClose]);
@@ -1014,7 +1034,7 @@ export default function ReportFlow({
       setWorking(false);
     }
   };
-  const save = async (isTemplate, exportAfter = false) => {
+  const save = async (isTemplate, exportAfter = false, overwrite = false) => {
     setError("");
     setWorking(true);
     try {
@@ -1023,14 +1043,22 @@ export default function ReportFlow({
         title: isTemplate ? templateName.trim() : report.title,
       };
       const item = reportRecord(configured, isTemplate);
-      await onSave(item, isTemplate, exportAfter);
+      const saved = await onSave(
+        item,
+        isTemplate,
+        exportAfter,
+        isTemplate && overwrite ? templateSource : null,
+      );
+      if (!active.current) return;
       if (exportAfter) {
         await downloadDocument(item, "pdf");
         onClose();
       }
       if (isTemplate) {
+        if (saved) setTemplateSource(saved);
+        if (initial?.editTemplate) setReport(configured);
         setTemplateName(null);
-        setToast("Template saved");
+        setToast(overwrite ? "Template updated" : "Template saved");
       }
     } catch (e) {
       setError(e.message);
@@ -1113,6 +1141,7 @@ export default function ReportFlow({
                 className="rp-type-card"
                 key={t.id}
                 onClick={() => {
+                  setTemplateSource(null);
                   setReport(newReport(t.id, "overview", preparedBy));
                   setStep("template");
                 }}
@@ -1139,6 +1168,7 @@ export default function ReportFlow({
                   className="rp-type-card"
                   key={id}
                   onClick={() => {
+                    setTemplateSource(null);
                     setReport(newReport(report.type, id, preparedBy));
                     setStep("selection");
                   }}
@@ -1161,6 +1191,7 @@ export default function ReportFlow({
                       className="rp-btn"
                       key={t.id}
                       onClick={() => {
+                        setTemplateSource(t);
                         setReport({
                           ...structuredClone(t.report),
                           preparedBy,
@@ -1223,12 +1254,12 @@ export default function ReportFlow({
     >
       <header className="rp-builder-head">
         <h2>
-          {initial && !initial.isTemplate ? "Edit Report" : "Create Report"}
+          {initial?.editTemplate ? "Edit Template" : initial && !initial.isTemplate ? "Edit Report" : "Create Report"}
         </h2>
         <button
           className="rp-btn"
           disabled={working || saveDisabled}
-          onClick={() => setTemplateName(`${report.title} Template`)}
+          onClick={() => setTemplateName(templateSource?.name || `${report.title} Template`)}
         >
           ▣ Save as Template
         </button>
@@ -1524,18 +1555,20 @@ export default function ReportFlow({
             disabled={
               working || loading || saveDisabled || !report.title.trim()
             }
-            onClick={() => save(false)}
+            onClick={() => initial?.editTemplate
+              ? setTemplateName(report.title)
+              : save(false)}
           >
-            {working ? "Saving…" : "Save Report"}
+            {working ? "Saving…" : initial?.editTemplate ? "Save Template" : "Save Report"}
           </button>
-          <button
+          {!initial?.editTemplate && <button
             className="rp-btn primary"
             aria-label="Open export menu"
             aria-expanded={menu}
             onClick={() => setMenu((v) => !v)}
           >
             ⌄
-          </button>
+          </button>}
           {menu && (
             <div className="rp-export-menu">
               <button
@@ -1646,6 +1679,7 @@ export default function ReportFlow({
       {templateName !== null && (
         <Dialog
           title="Save as Template"
+          className="rp-template-dialog"
           onClose={() => setTemplateName(null)}
           footer={
             <>
@@ -1653,11 +1687,18 @@ export default function ReportFlow({
                 Cancel
               </button>
               <button
+                className="rp-btn"
+                disabled={working || !templateSource?.id || !templateName.trim()}
+                onClick={() => save(true, false, true)}
+              >
+                Overwrite current template
+              </button>
+              <button
                 className="rp-btn primary"
                 disabled={working || !templateName.trim()}
                 onClick={() => save(true)}
               >
-                Save Template
+                Save as New Template
               </button>
             </>
           }
@@ -1676,9 +1717,13 @@ export default function ReportFlow({
             </p>
           )}
           <p className="rp-muted">
-            Saves pages, details and styling for reuse. Portfolio selections and
-            market data are selected for each new report.
+            Create a template to reuse your selections again later. Templates
+            save your page and exhibit selections as well as style choices.
+            Portfolio selections and market data are selected for each new report.
           </p>
+          {templateSource?.id && (
+            <p className="rp-muted">Current template: {templateSource.name}</p>
+          )}
         </Dialog>
       )}
     </section>,
