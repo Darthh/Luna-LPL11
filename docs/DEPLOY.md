@@ -89,7 +89,8 @@ URLs use the stage's address, e.g. `https://d2wyrxhbmhmu6j.cloudfront.net`.
 3. `npx sst secret set AuthGoogleId <client id> --stage <stage>` and
    `npx sst secret set AuthGoogleSecret <client secret> --stage <stage>`.
 
-**Apple** (needs a paid Apple Developer account; HTTPS only, so not on localhost)
+**Apple** (on hold: needs a paid Apple Developer account, $99/yr; HTTPS only, so
+not on localhost. Nothing shows until both secrets are set.)
 1. developer.apple.com → Identifiers: an **App ID** with *Sign in with Apple*,
    then a **Services ID** (e.g. `com.luna.web`). That ID is `AuthAppleId`.
 2. Configure the Services ID for Sign in with Apple: domain

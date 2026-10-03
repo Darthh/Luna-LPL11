@@ -146,7 +146,8 @@ Status of each area:
 - **Built, needs setup:**
   - Google sign-in: OAuth client and redirect URI, then the `AuthGoogleId`
     and `AuthGoogleSecret` secrets.
-  - Apple sign-in: a paid developer account and `npm run apple:secret`.
+  - Apple sign-in: **on hold** (needs a $99/yr Apple Developer account). The
+    code is in and stays hidden until `AuthAppleId`/`AuthAppleSecret` are set.
   - Auto-deploy: an OIDC role plus GitHub variables `AWS_DEPLOY_ROLE_ARN`,
     `DEPLOY_STAGE=data-test` and `LUNA_DATA=true`. The workshop account may
     deny creating IAM roles.
@@ -207,7 +208,7 @@ Status of each area:
    - ask a chat question;
    - open an incognito window, sign in, and check the history and watchlist
      are there.
-5. Set up Google sign-in. Apple is optional.
+5. Set up Google sign-in. (Apple is on hold: it needs a paid developer account.)
 6. Try the OIDC role for auto-deploy (`docs/DEPLOY.md` §4).
 7. Demo assets:
    - a screenshot of CloudWatch → Metrics → LunaTerminal/AI;
