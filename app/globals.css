@@ -14252,6 +14252,15 @@ html[data-layout="terminal"] header.site {
   padding-bottom: 12px;
 }
 
+/* Luna alternates navigation rows within each group. */
+html[data-theme="luna"] :is(
+  .tnav-scroll > .tnav-item:nth-child(even of .tnav-item),
+  .tnav-items > .tnav-item:nth-child(even),
+  .tnav-chat-row:nth-child(even of .tnav-chat-row) .tnav-item
+):not(.active):not(.on):not(:hover):not([data-blocked="true"]) {
+  background: #F8F6F9;
+}
+
 .tnav-collapse,
 .tnav-section-head,
 .tnav-item {
