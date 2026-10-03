@@ -14,6 +14,10 @@
   flex-shrink: 0;
 }
 
+:global(html[data-theme="luna"]) .account {
+  color: #ffffff;
+}
+
 .name {
   max-width: 160px;
   overflow: hidden;
