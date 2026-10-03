@@ -34,12 +34,15 @@ export default auth((request) => {
 
 export const config = {
   matcher: [
+    // Auth handlers manage their own cookies. Refreshing the session here
+    // would restore the cookie that /api/auth/signout is trying to clear.
     // xml and txt are in this exclusion list for the crawler-facing files:
     // /sitemap.xml, /robots.txt and the IndexNow key file. Running the auth
     // middleware over them made Auth.js stamp two Set-Cookie headers onto
     // every fetch and forced a cache MISS, so each crawl paid a function
     // invocation for a static document.
-    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|xml|txt|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
-    "/(api|trpc)(.*)",
+    "/((?!api/auth(?:/|$)|_next|[^?]*\\.(?:html?|css|js(?!on)|xml|txt|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
+    "/api/((?!auth(?:/|$)).*)",
+    "/trpc(.*)",
   ],
 };
