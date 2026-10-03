@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { ChevronIcon, NAV_LINKS } from "@/lib/navigation";
 import { useLanguage } from "./LanguageProvider";
 import { useDashboard } from "./DashboardProvider";
-import { CHAT_HISTORY_EVENT, deleteChat, readChats, searchChats } from "@/lib/chatHistory";
+import { CHAT_HISTORY_EVENT, deleteChat, readChats, searchChats, syncChats } from "@/lib/chatHistory";
 
 // A roof over a door: the overview every other page hangs off.
 const HomeIcon = (
@@ -118,6 +118,8 @@ export default function TerminalNav() {
     const refreshChats = () => setAllChats(readChats());
     window.addEventListener(CHAT_HISTORY_EVENT, refreshChats);
     window.addEventListener("storage", refreshChats);
+    // Signed-in visitors get their account's chats; a no-op otherwise.
+    syncChats();
     return () => {
       window.removeEventListener(CHAT_HISTORY_EVENT, refreshChats);
       window.removeEventListener("storage", refreshChats);
