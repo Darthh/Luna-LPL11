@@ -18,6 +18,7 @@ function isEasterEgg(q) {
 
 export async function GET(request) {
   const q = request.nextUrl.searchParams.get("q")?.trim();
+  const fundsOnly = request.nextUrl.searchParams.get('funds') === 'true';
   if (!q) return Response.json({ results: [] });
   if (isEasterEgg(q)) return Response.json({ results: [EASTER_EGG] });
 
@@ -28,7 +29,7 @@ export async function GET(request) {
     ).json();
     const results = rankQuotes(
       (json?.quotes ?? [])
-        .filter((r) => r?.symbol && (r.quoteType === "EQUITY" || r.quoteType === "ETF"))
+        .filter((r) => r?.symbol && (fundsOnly ? ['ETF', 'MUTUALFUND'].includes(r.quoteType) : ['EQUITY', 'ETF'].includes(r.quoteType)))
         .map((r) => ({
           symbol: r.symbol,
           name: r.shortname ?? r.longname ?? r.symbol,

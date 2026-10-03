@@ -1,7 +1,7 @@
 "use client";
 
-import AdvisorWorkspace from "@/components/AdvisorWorkspace";
+import ReportsWorkspace from "@/components/ReportsWorkspace";
 
 export default function Page() {
-  return <AdvisorWorkspace kind="reports" />;
+  return <ReportsWorkspace />;
 }
