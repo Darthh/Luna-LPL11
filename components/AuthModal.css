@@ -2,4 +2,4 @@
 .auth-social-options .auth-google-btn:disabled { opacity: .55; cursor: not-allowed; }
 .auth-social-options .auth-google-btn:disabled:hover { border-color: var(--border); }
 .auth-social-options .auth-google-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-.auth-welcome { margin-top: 14px; font-size: .9rem; font-weight: 700; }
+.auth-modal .auth-welcome-heading { text-align: center; font-weight: 800; margin-bottom: 20px; }

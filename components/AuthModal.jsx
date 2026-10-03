@@ -129,11 +129,10 @@ export default function AuthModal({ mode: initialMode, reason, onClose }) {
         <button className="auth-modal-close" onClick={onClose} aria-label="Close">
           ×
         </button>
-        <h2>{mode === "signup" ? "Create your account" : "Sign in"}</h2>
+        <h2 className="auth-welcome-heading">Welcome back</h2>
         {reason && <p className="auth-modal-reason">{reason}</p>}
 
         <form onSubmit={handleSubmit} className="auth-form">
-          <strong className="auth-welcome">Welcome back</strong>
           <label>
             Email
             <input
