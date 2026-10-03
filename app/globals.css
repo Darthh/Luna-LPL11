@@ -1313,6 +1313,9 @@ button.nav-link {
 .auth-google-btn:hover {
   border-color: var(--accent);
 }
+.auth-google-btn + .auth-google-btn {
+  margin-top: 8px;
+}
 .auth-modal-divider {
   display: flex;
   align-items: center;
