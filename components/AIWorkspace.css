@@ -84,6 +84,9 @@ html[data-layout="terminal"] #content .ai-workspace .ai-welcome h2 { font-size: 
 .ai-stock-name { color: var(--text); font-size: 13px; line-height: 1.35; text-decoration: none; }
 .ai-stock-name:hover { text-decoration: underline; }
 .ai-stock-name span { margin-left: 4px; color: var(--text-soft); }
+.ai-stock-name { display: inline-flex; align-items: center; gap: 8px; }
+.ai-stock-name .ai-stock-name-text { margin-left: 0; color: inherit; }
+.ai-stock-logo { flex-shrink: 0; width: 24px; height: 24px; object-fit: contain; border-radius: 4px; }
 .ai-stock-price { margin-top: 5px; font-size: 24px; line-height: 1.15; letter-spacing: -0.025em; }
 .ai-stock-change { margin-top: 3px; font-size: 12px; font-weight: 600; line-height: 1.3; }
 .ai-stock-change.positive { color: var(--ai-stock-up); }

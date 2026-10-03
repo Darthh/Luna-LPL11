@@ -17,6 +17,7 @@ import { useSession } from "next-auth/react";
 import ChatDocument from "./ChatDocument";
 import { localWorkspaceMessages, parseDocumentAnswer, requestedSave } from "@/lib/accountWorkspace.mjs";
 import { workspaceRequest, saveDocument } from "@/lib/workspaceClient.mjs";
+import { hideBrokenLogo, logoUrl } from "@/lib/companyLogo";
 
 const LOCAL_KEY = "lunaLocalModel";
 const LOCAL_SECRET_KEY = "lunaLocalModelKey";
@@ -167,7 +168,9 @@ function StockQuoteCard({ card }) {
       <div className="ai-stock-card-head">
         <div>
           <Link href={`/stock/${encodeURIComponent(card.symbol)}`} className="ai-stock-name">
-            {card.name} <span>{card.symbol}</span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img className="ai-stock-logo" src={logoUrl(card.symbol, 64)} alt="" width="24" height="24" onError={hideBrokenLogo} />
+            <span className="ai-stock-name-text">{card.name} <span>{card.symbol}</span></span>
           </Link>
           <strong className="ai-stock-price">{currency.format(card.price)}</strong>
           {Number.isFinite(card.changePct) && (
