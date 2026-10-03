@@ -28,7 +28,7 @@ html[data-theme="padres"] {
   --gauge-tick-text: #71563d;
 }
 html[data-theme="padres"] header.site {
-  background: #ffc425;
+  background: #ffc526;
   border-bottom: 2px solid #2f241c;
   color: #2f241c;
 }
@@ -41,18 +41,38 @@ html[data-theme="padres"] header.site :is(.theme-toggle, .header-about-link, .au
 html[data-theme="padres"] header.site .header-search { background: #fff0c5; border-color: #987123; color: #2f241c; }
 html[data-theme="padres"] header.site .header-search input { color: #2f241c; }
 html[data-theme="padres"] header.site .header-search input::placeholder { color: #71563d; }
-html[data-theme="padres"] :is(.tnav, .trail) { background: #d6b68b; }
-html[data-theme="padres"] .terminal-shell > #content::before {
-  content: "";
+html[data-theme="padres"] body {
+  background-image: linear-gradient(#21191230, #21191230), url("/brand/padres-team.png");
+  background-size: cover;
+  background-position: center 58%;
+  background-attachment: fixed;
+}
+html[data-theme="padres"] :is(.tnav, .trail) {
+  --panel: #2f241c;
+  --text: #fff0cc;
+  --text-soft: #e2cbae;
+  --border: #594332;
+  --accent: #ffc526;
+  --hover-bg: #4a3829;
+  background: repeating-linear-gradient(160deg, #241b16 0 45px, #2f241e 45px 90px);
+}
+html[data-theme="padres"] .tnav-item:nth-child(odd) { background-color: #241b16; }
+html[data-theme="padres"] .tnav-item:nth-child(even) { background-color: #2f241e; }
+html[data-theme="padres"] .tnav-item:is(:hover, .active, .on) { background-color: #594332; color: #ffc526; }
+.padres-mark { display: none; }
+html[data-theme="padres"] header.site .logo > :not(.padres-mark) { display: none; }
+html[data-theme="padres"] header.site .padres-mark {
   display: block;
-  height: 136px;
-  margin-bottom: 12px;
-  border: 1px solid #684623;
-  border-radius: 8px;
-  background: url("/brand/padres-logo.svg") center / auto 110px no-repeat,
-    repeating-linear-gradient(90deg, #ffffff00 0 38px, #2f241c10 39px 40px),
-    linear-gradient(110deg, #a78050, #f3dbab 42%, #f3dbab 58%, #a78050);
+  width: 28px;
+  height: 32px;
+  background: url("/brand/padres-logo.svg") center / contain no-repeat;
 }
-@media (max-width: 600px) {
-  html[data-theme="padres"] .terminal-shell > #content::before { height: 100px; margin-top: 62px; background-size: auto 80px, auto, auto; }
+/* The chat text stays readable over the photo while the team remains visible. */
+html[data-theme="padres"] .ai-workspace .ai-stage {
+  background: #f0dfc5ed;
+  border: 1px solid #b8976c;
+  border-radius: 14px;
+  padding: 24px;
+  box-sizing: border-box;
 }
+html[data-theme="padres"] .ai-workspace .ai-welcome .ai-mark { display: none; }
