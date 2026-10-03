@@ -1,6 +1,6 @@
 // End-to-end check of a deployed site: `npm run smoke:site https://xxxx.cloudfront.net`
 //
-// 1. Key pages and public APIs answer 200 (and say how long they took).
+// 1. Key pages, public APIs and the MCP endpoint answer (and say how long they took).
 // 2. Each AWS chat model answers one real question through /api/ai-chat:
 //    it must fetch live data, stream an answer, and send no error event.
 // Prints a table and exits non-zero if anything failed. Costs one short chat
@@ -42,6 +42,28 @@ await check("api /api/stock-search?q=nvidia", async () => {
   const text = await (await get("/api/stock-search?q=nvidia")).text();
   if (!/NVDA/i.test(text)) throw new Error("NVDA not in results");
   return "finds NVDA";
+});
+
+// The MCP endpoint (docs/MCP.md): handshake, tool list, one live tool call.
+await check("mcp /api/mcp", async () => {
+  const rpc = async (id, method, params) => {
+    const res = await fetch(new URL("/api/mcp", base), {
+      method: "POST",
+      headers: { "content-type": "application/json", accept: "application/json, text/event-stream" },
+      body: JSON.stringify({ jsonrpc: "2.0", id, method, params }),
+      signal: AbortSignal.timeout(60000),
+    });
+    if (res.status !== 200) throw new Error(`${method}: HTTP ${res.status}`);
+    const body = await res.json();
+    if (body.error) throw new Error(`${method}: ${body.error.message}`);
+    return body.result;
+  };
+  const init = await rpc(1, "initialize", { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "smoke", version: "1" } });
+  const { tools } = await rpc(2, "tools/list");
+  const quote = await rpc(3, "tools/call", { name: "get_quote", arguments: { symbols: ["AAPL"] } });
+  const price = quote.structuredContent?.quotes?.[0]?.price;
+  if (quote.isError || typeof price !== "number") throw new Error(`get_quote: ${quote.content?.[0]?.text?.slice(0, 120)}`);
+  return `protocol ${init.protocolVersion}, ${tools.length} tools, AAPL ${price}`;
 });
 
 const models = HOSTED_MODELS.filter(({ id }) => ["bedrock", "mantle"].includes(hostedModel(id)?.provider) && (!pick || pick.includes(id)));
