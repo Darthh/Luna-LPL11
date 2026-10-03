@@ -12,10 +12,11 @@ export async function POST(request) {
   const name = body?.name?.toString().trim() || null;
   const turnstileToken = body?.turnstileToken?.toString();
 
-  // Bot check. Skipped entirely when no secret is configured so local dev
-  // and preview builds without the env var keep working.
+  // Bot check. Needs both halves: the secret here and the public site key the
+  // signup form renders the widget with. With either missing it is skipped, so
+  // a form that shows no widget is never rejected for lacking a token.
   const secret = process.env.TURNSTILE_SECRET_KEY;
-  if (secret) {
+  if (secret && process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY) {
     if (!turnstileToken) {
       return Response.json({ error: "Bot verification failed. Please try again." }, { status: 403 });
     }
