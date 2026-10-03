@@ -110,8 +110,9 @@ html[data-layout="terminal"] #content .ai-workspace .ai-welcome h2 { font-size: 
 .ai-stock-chart { display: block; width: 100%; height: 132px; padding: 0 15px; transition: opacity 140ms var(--ease-out); }
 .ai-stock-chart.is-loading { opacity: 0.42; }
 .ai-stock-chart-wrap { position: relative; }
-.ai-stock-chart { cursor: crosshair; }
-.ai-stock-hover-marker { pointer-events: none; }
+.ai-stock-chart { cursor: crosshair; touch-action: pan-y; user-select: none; }
+.ai-stock-hover-marker, .ai-stock-measure-marker { pointer-events: none; }
+.ai-stock-tooltip.ai-stock-measure-tooltip { left: 50%; transform: translateX(-50%); width: max-content; }
 .ai-stock-tooltip { position: absolute; top: 6px; left: 20px; max-width: calc(100% - 40px); padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--card-bg, var(--bg)); color: var(--text); font-size: 11px; pointer-events: none; box-shadow: 0 4px 12px #0002; }
 .ai-stock-tooltip.is-right { left: auto; right: 20px; }
 .ai-stock-tooltip > div { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }

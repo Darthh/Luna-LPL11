@@ -50,6 +50,8 @@ function StockQuoteCard({ card }) {
   const [series, setSeries] = useState({ [initialRange]: card.points });
   const [loadingRange, setLoadingRange] = useState(null);
   const [hoverIndex, setHoverIndex] = useState(null);
+  const [measurement, setMeasurement] = useState(null);
+  const dragPointer = useRef(null);
   const requestId = useRef(0);
   const points = (series[activeRange] || card.points).filter((point) => Number.isFinite(point?.c));
   const geometry = chartGeometry(points, 620, 150, 5);
@@ -76,27 +78,74 @@ function StockQuoteCard({ card }) {
   const hoverCoords = hoverPoint ? geometry.line.split(" ")[hoverIndex].split(",").map(Number) : null;
   const hoverChange = hoverPoint ? card.price - hoverPoint.c : null;
   const hoverChangePct = hoverPoint?.c > 0 ? (hoverChange / hoverPoint.c) * 100 : null;
-  const hoverDate = hoverPoint ? new Date(hoverPoint.t * 1000) : null;
-  const hoverLabel = hoverDate && Number.isFinite(hoverDate.getTime())
-    ? hoverDate.toLocaleString(undefined, {
+  function pointLabel(point) {
+    const date = new Date(point.t * 1000);
+    return Number.isFinite(date.getTime()) ? date.toLocaleString(undefined, {
       month: "short", day: "numeric", year: "numeric",
       ...(activeRange === "1d" ? { hour: "numeric", minute: "2-digit" } : {}),
     }) : "";
+  }
+  const hoverLabel = hoverPoint ? pointLabel(hoverPoint) : "";
+  // Match stock quote: read chronologically even when dragged right to left.
+  const fromIndex = measurement ? Math.min(measurement.start, measurement.end) : null;
+  const toIndex = measurement ? Math.max(measurement.start, measurement.end) : null;
+  const from = points[fromIndex];
+  const to = points[toIndex];
+  const measuring = from && to && fromIndex !== toIndex && loadingRange !== activeRange;
+  const measureChange = measuring ? to.c - from.c : 0;
+  const measurePct = measuring && from.c !== 0 ? (measureChange / Math.abs(from.c)) * 100 : null;
+  const coords = geometry.line.split(" ");
+  const fromCoords = measuring ? coords[fromIndex].split(",").map(Number) : null;
+  const toCoords = measuring ? coords[toIndex].split(",").map(Number) : null;
 
-  function hoverChart(event) {
-    if (loadingRange === activeRange) return;
+  function indexAtPointer(event) {
     const svg = event.currentTarget;
     const position = svg.createSVGPoint();
     position.x = event.clientX;
     position.y = event.clientY;
     const matrix = svg.getScreenCTM();
-    if (!matrix) return;
+    if (!matrix) return null;
     const x = position.matrixTransform(matrix.inverse()).x;
     const index = Math.round(((x - 5) / 610) * (points.length - 1));
-    setHoverIndex(Math.max(0, Math.min(points.length - 1, index)));
+    return Math.max(0, Math.min(points.length - 1, index));
+  }
+
+  function hoverChart(event) {
+    if (loadingRange === activeRange) return;
+    const index = indexAtPointer(event);
+    setHoverIndex(index);
+    if (dragPointer.current === event.pointerId && index !== null) {
+      setMeasurement((current) => current ? { ...current, end: index } : null);
+    }
+  }
+
+  function startMeasure(event) {
+    if (event.button !== 0 || !event.isPrimary || loadingRange === activeRange) return;
+    const index = indexAtPointer(event);
+    if (index === null) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    dragPointer.current = event.pointerId;
+    setMeasurement({ start: index, end: index });
+    setHoverIndex(null);
+  }
+
+  function endMeasure(event) {
+    if (dragPointer.current !== event.pointerId) return;
+    const index = indexAtPointer(event);
+    setMeasurement((current) => current && index !== null && current.start !== index
+      ? { ...current, end: index } : null);
+    dragPointer.current = null;
+    event.currentTarget.releasePointerCapture(event.pointerId);
+  }
+
+  function cancelMeasure() {
+    dragPointer.current = null;
+    setMeasurement(null);
+    setHoverIndex(null);
   }
 
   async function selectRange(nextRange) {
+    cancelMeasure();
     setHoverIndex(null);
     setActiveRange(nextRange);
     if (series[nextRange]) return;
@@ -145,16 +194,32 @@ function StockQuoteCard({ card }) {
 
       <div className="ai-stock-chart-wrap">
         <svg className={`ai-stock-chart${loadingRange === activeRange ? " is-loading" : ""}`} viewBox="0 0 620 150" role="img" aria-label={`${card.symbol} ${activeRange} price movement`} preserveAspectRatio="none"
-          onPointerMove={hoverChart} onPointerLeave={() => setHoverIndex(null)} onPointerCancel={() => setHoverIndex(null)}>
+          onPointerMove={hoverChart} onPointerDown={startMeasure} onPointerUp={endMeasure}
+          onPointerLeave={() => setHoverIndex(null)} onPointerCancel={cancelMeasure}
+          onLostPointerCapture={() => { dragPointer.current = null; }}>
           <line x1="5" y1="75" x2="615" y2="75" className="ai-stock-gridline" />
           <polygon points={geometry.area} fill={accent} opacity="0.12" />
           <polyline points={geometry.line} fill="none" stroke={accent} strokeWidth="2.4" vectorEffect="non-scaling-stroke" />
-          {hoverCoords && <g className="ai-stock-hover-marker">
+          {measuring && <g className="ai-stock-measure-marker">
+            <rect x={fromCoords[0]} y="5" width={toCoords[0] - fromCoords[0]} height="140" fill="currentColor" opacity="0.12" />
+            {[fromCoords, toCoords].map(([x, y], index) => <g key={index}>
+              <line x1={x} y1="5" x2={x} y2="145" className="ai-stock-gridline" />
+              <circle cx={x} cy={y} r="4" fill={measureChange >= 0 ? "var(--ai-stock-up)" : "var(--ai-stock-down)"} />
+            </g>)}
+          </g>}
+          {hoverCoords && !measuring && <g className="ai-stock-hover-marker">
             <line x1={hoverCoords[0]} y1="5" x2={hoverCoords[0]} y2="145" className="ai-stock-gridline" />
             <circle cx={hoverCoords[0]} cy={hoverCoords[1]} r="4" fill={accent} />
           </g>}
         </svg>
-        {hoverPoint && <div className={`ai-stock-tooltip${hoverCoords[0] < 310 ? " is-right" : ""}`}>
+        {measuring && <div className="ai-stock-tooltip ai-stock-measure-tooltip" role="status">
+          <div><strong className={measureChange >= 0 ? "positive" : "negative"}>
+            {measureChange >= 0 ? "+" : "-"}{currency.format(Math.abs(measureChange))}{measurePct !== null ? ` (${measurePct >= 0 ? "+" : ""}${measurePct.toFixed(2)}%)` : ""}
+          </strong></div>
+          <div><span>{pointLabel(from)} – {pointLabel(to)}</span></div>
+          <div><span>{currency.format(from.c)} → {currency.format(to.c)}</span></div>
+        </div>}
+        {hoverPoint && !measuring && <div className={`ai-stock-tooltip${hoverCoords[0] < 310 ? " is-right" : ""}`}>
           <div><strong>{currency.format(hoverPoint.c)}</strong><span>{hoverLabel}</span></div>
           <div><span>Current {currency.format(card.price)}</span><b className={hoverChange >= 0 ? "positive" : "negative"}>
             {hoverChange >= 0 ? "+" : ""}{currency.format(hoverChange)}{hoverChangePct !== null ? ` (${hoverChangePct >= 0 ? "+" : ""}${hoverChangePct.toFixed(2)}%)` : ""}
