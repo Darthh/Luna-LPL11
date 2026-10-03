@@ -3,7 +3,7 @@ import HedgeFundDetail from "@/components/HedgeFundDetail";
 import { managerByCikOrSlug, managerSlug } from "@/lib/thirteenF";
 import { shortName } from "@/lib/hedgeFundFormat";
 
-// The URL segment is the firm's name (/hedge-funds/JaneStreetGroup), but every
+// The URL segment is the firm's name (/13Filings/JaneStreetGroup), but every
 // CIK link ever shared still resolves - see managerByCikOrSlug. Both rosters
 // are searched: a hedgefund and an institution are the same kind of page off
 // the same filings.
@@ -18,7 +18,7 @@ export async function generateMetadata({ params }) {
     title: `${name} 13F holdings`,
     description: `Every stock ${name} reported owning in its latest SEC Form 13F: position sizes, quarter-on-quarter share changes and what each holding is worth.`,
     // Always the name form, so the two URLs for a page don't compete in search.
-    alternates: { canonical: `/hedge-funds/${managerSlug(found.name)}` },
+    alternates: { canonical: `/13Filings/${managerSlug(found.name)}` },
   };
 }
 
@@ -41,7 +41,7 @@ export default async function HedgeFundPage({ params, searchParams }) {
       initialPeriod={typeof period === "string" ? period : null}
       // Only so the back link returns to the list the reader came from. The
       // book itself is the same either way - a CIK is a CIK.
-      roster={roster === "institutions" ? "institutions" : "hedgefunds"}
+      roster={roster === "hedgefunds" ? "hedgefunds" : "institutions"}
     />
   );
 }

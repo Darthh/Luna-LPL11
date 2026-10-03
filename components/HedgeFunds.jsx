@@ -8,7 +8,7 @@ import { useTheme } from "@/components/PageChrome";
 import QuarterPicker from "@/components/QuarterPicker";
 import { logoUrl, managerLogoUrl, blankBrokenLogo } from "@/lib/companyLogo";
 import { MANAGER_TICKERS } from "@/lib/institutions";
-import { arcLogos, buildDonut, donutPalette, sliceColor as sliceColorFor } from "@/lib/donutChart";
+import { buildDonut, donutPalette, sliceColor as sliceColorFor } from "@/lib/donutChart";
 import {
   changeClass,
   money,
@@ -133,8 +133,7 @@ const sliceHeld = (r) => r.value;
 // A leaderboard as one picture: each of the twenty tickers as its share of the
 // board's total. The legend names every slice, because the hues alone don't
 // carry twenty labels - same rule as the rings on a manager's page - and the
-// logos the arcs are big enough for are on top of that naming, never instead
-// of it.
+// wheel uses plain color slices; company icons remain in the legend.
 //
 // One component for both boards: they differ only in which number off the row
 // is the slice, so a second copy of this would be a second place for the ring
@@ -162,7 +161,7 @@ function ShareDonut({ title, centerSub, sliceValue, empty, rows, note, state }) 
       ) : (
         <div className="hf-donut-wrap">
           <div className="hf-donut">
-            <Doughnut data={chart.data} options={chart.options} plugins={[arcLogos]} />
+            <Doughnut data={chart.data} options={chart.options} />
             <div className="hf-donut-center" aria-hidden="true">
               <span className="hf-donut-center-top">Top {slices.length}</span>
               <span className="hf-donut-center-sub">{centerSub}</span>
@@ -197,12 +196,12 @@ function ShareDonut({ title, centerSub, sliceValue, empty, rows, note, state }) 
   );
 }
 
-export default function HedgeFunds() {
+export default function HedgeFunds({ initialRoster = "institutions" }) {
   const [funds, setFunds] = useState(null);
   const [periods, setPeriods] = useState([]);
   // Which list is showing. Both are 13F filers read by the same code; the split
   // is by what the firm is - see lib/institutions.js.
-  const [roster, setRoster] = useState("hedgefunds");
+  const [roster, setRoster] = useState(initialRoster);
   // Which quarter the list is showing. `null` until the first response says
   // which quarters exist - the newest one is whatever EDGAR has, not something
   // this page can name up front.
@@ -227,7 +226,7 @@ export default function HedgeFunds() {
   // one entry rather than two.
   const back = selected && selected !== latest ? selected : null;
   const search = [
-    roster === "hedgefunds" ? null : `roster=${roster}`,
+    `roster=${roster}`,
     back ? `period=${encodeURIComponent(back)}` : null,
   ]
     .filter(Boolean)
@@ -245,6 +244,9 @@ export default function HedgeFunds() {
   // same thing on both sides.
   const showRoster = useCallback((next) => {
     setRoster(next);
+    const params = new URLSearchParams(window.location.search);
+    if (next === "institutions") params.delete("roster"); else params.set("roster", next);
+    window.history.replaceState(null, "", `/13Filings${params.size ? `?${params}` : ""}`);
     setFunds(null);
     setListError(null);
     setSort(null);
@@ -335,7 +337,7 @@ export default function HedgeFunds() {
   return (
     <div className="hf-page">
       <div className="hf-head">
-        <h1 className="hf-title">Hedgefund 13F&apos;s</h1>
+        <h1 className="hf-title">13F Filings</h1>
         <p className="hf-sub">
           Every manager whose <b>Form 13F</b>{" "}for the quarter reports a book of {floorLabel} or
           more, read straight from the SEC&apos;s EDGAR archive. Switch between the hedgefunds and
@@ -361,8 +363,8 @@ export default function HedgeFunds() {
                 corner as a separate filter. */}
             <div className="hf-roster-toggle" role="group" aria-label="Which list to show">
               {[
-                ["hedgefunds", "Hedgefunds"],
                 ["institutions", "Institutions"],
+                ["hedgefunds", "Hedgefunds"],
               ].map(([value, label]) => (
                 <button
                   key={value}
@@ -441,7 +443,7 @@ export default function HedgeFunds() {
                           knows which list to send the reader back to. */}
                       <Link
                         className="hf-manager"
-                        href={`/hedge-funds/${managerSlug(f.name)}${listSearch}`}
+                        href={`/13Filings/${managerSlug(f.name)}${listSearch}`}
                         title={shortName(f.name)}
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}

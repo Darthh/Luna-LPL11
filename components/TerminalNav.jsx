@@ -6,7 +6,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { ChevronIcon, NAV_LINKS } from "@/lib/navigation";
 import { useLanguage } from "./LanguageProvider";
 import { useDashboard } from "./DashboardProvider";
-import { CHAT_HISTORY_EVENT, deleteChat, readChats, searchChats, syncChats } from "@/lib/chatHistory";
+import { CHAT_HISTORY_EVENT, deleteChat, readChats, searchChats, syncChats, setChatAccount } from "@/lib/chatHistory";
+import { useSession } from "next-auth/react";
 
 // A roof over a door: the overview every other page hangs off.
 const HomeIcon = (
@@ -63,6 +64,8 @@ function readPrefs() {
 
 
 export default function TerminalNav() {
+  const { data: session, status: authStatus } = useSession();
+  const accountId = session?.user?.id;
   const pathname = usePathname();
   const { t } = useLanguage();
   // One state object, so restoring the saved preferences after hydration is a
@@ -119,12 +122,17 @@ export default function TerminalNav() {
     window.addEventListener(CHAT_HISTORY_EVENT, refreshChats);
     window.addEventListener("storage", refreshChats);
     // Signed-in visitors get their account's chats; a no-op otherwise.
-    syncChats();
     return () => {
       window.removeEventListener(CHAT_HISTORY_EVENT, refreshChats);
       window.removeEventListener("storage", refreshChats);
     };
   }, []);
+
+  useEffect(() => {
+    if (authStatus === "loading") return;
+    setChatAccount(accountId);
+    syncChats();
+  }, [accountId, authStatus]);
 
   const toggleCollapsed = useCallback(() => {
     setPrefs((p) => {

@@ -115,7 +115,7 @@ function SortTh({ k, sort, onSort, children }) {
   );
 }
 
-export default function HedgeFundDetail({ cik, initialPeriod = null, roster = "hedgefunds" }) {
+export default function HedgeFundDetail({ cik, initialPeriod = null, roster = "institutions" }) {
   const theme = useTheme();
   const [fund, setFund] = useState(null);
   const [error, setError] = useState(null);
@@ -271,7 +271,7 @@ export default function HedgeFundDetail({ cik, initialPeriod = null, roster = "h
   // list this manager isn't on.
   const institutions = roster === "institutions";
   const back = (
-    <Link className="hf-back" href={institutions ? "/hedge-funds?roster=institutions" : "/hedge-funds"}>
+    <Link className="hf-back" href={institutions ? "/13Filings" : "/13Filings?roster=hedgefunds"}>
       <span aria-hidden="true">←</span> Back to {institutions ? "institutions" : "hedgefunds"}
     </Link>
   );

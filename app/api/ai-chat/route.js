@@ -10,6 +10,8 @@ import { classifyAwsError, logAwsFailure, withFailover } from "@/lib/awsErrors.m
 import { invokeAgent } from "@/lib/agentCoreClient.mjs";
 import { researchIdentity, sessionId } from "@/lib/agentIdentity.mjs";
 import { objectKey, readJson } from "@/lib/agentResearch.mjs";
+import { prisma } from "@/lib/prisma";
+import { ACCOUNT_TOOL_SCHEMA, WORKSPACE_INSTRUCTIONS, readAccountWorkspace, draftDocument, localWorkspaceMessages } from "@/lib/accountWorkspace.mjs";
 
 // The AI Bot's harness: Claude, wired to the same live feeds the rest of the
 // site draws on. The grounding is the point - a language model asked "what's
@@ -100,9 +102,21 @@ export async function POST(request) {
     return Response.json({ error: "Gemini requires GEMINI_API_KEY to be configured on the server." }, { status: 503 });
   }
 
-  const system = systemPrompt();
+  const workspaceChat = body.workspace === true;
+  const account = workspaceChat ? await readAccountWorkspace(prisma, session?.user?.id, messages.at(-1).content) : null;
+  const system = systemPrompt() + (workspaceChat ? `\n${WORKSPACE_INSTRUCTIONS}\n<account_workspace>${JSON.stringify(account)}</account_workspace>` : "");
+  const tools = workspaceChat ? [...TOOL_SCHEMA, ...ACCOUNT_TOOL_SCHEMA] : TOOL_SCHEMA;
+  const runners = workspaceChat ? { ...TOOLS,
+    find_account_data: async ({ query }) => readAccountWorkspace(prisma, session?.user?.id, String(query).slice(0, 8000)),
+    create_account_document: async input => {
+      if (!session?.user?.id) return { error: "Sign in to create account documents." };
+      return { draft: draftDocument(input), status: "draft" };
+    },
+  } : TOOLS;
   const question = messages[messages.length - 1].content;
-  const useAgent = Boolean(process.env.AGENTCORE_RUNTIME_ARN) && ["bedrock", "mantle"].includes(config.provider);
+  // Account tools run on the authenticated app server, never a remote agent
+  // accepting browser-supplied owner IDs.
+  const useAgent = (!workspaceChat || body.documentIds?.length > 0) && Boolean(process.env.AGENTCORE_RUNTIME_ARN) && ["bedrock", "mantle"].includes(config.provider);
   const identityInfo = useAgent ? researchIdentity(request, session?.user?.id) : null;
   const documentIds = Array.isArray(body.documentIds) ? body.documentIds.slice(0, 8) : [];
   if (documentIds.length) {
@@ -161,19 +175,19 @@ export async function POST(request) {
 
       try {
         if (useAgent) {
-          await invokeAgent({ model: requestedModel, messages, owner: identityInfo.owner, documentIds },
+          await invokeAgent({ model: requestedModel, messages: workspaceChat ? localWorkspaceMessages(messages, account) : messages, owner: identityInfo.owner, documentIds },
             sessionId(identityInfo.owner, typeof body.conversationId === "string" ? body.conversationId.slice(0, 100) : crypto.randomUUID()),
             event => { if (["text", "data", "error"].includes(event.t)) { if (event.t === "text") streamed = true; send(event.t, event.v); } });
           return;
         }
         // Turn one: which feeds does this question need? Not streamed - it
         // produces tool calls, not prose.
-        const planned = aws ? { content: await onAws("plan", (c) => planAws(c, system, messages, TOOL_SCHEMA)) } : await anthropic.messages.create({
+        const planned = aws ? { content: await onAws("plan", (c) => planAws(c, system, messages, tools)) } : await anthropic.messages.create({
           model: config.model,
           max_tokens: PLAN_MAX_TOKENS,
           system,
           messages,
-          tools: TOOL_SCHEMA,
+          tools,
           tool_choice: FETCH_FIRST,
         });
 
@@ -188,7 +202,7 @@ export async function POST(request) {
         // the slowest feed instead of all three in turn.
         const outcomes = await Promise.all(
           calls.map((call, index) => {
-            const run = TOOLS[call.name];
+            const run = runners[call.name];
             if (index >= 4) return { error: "Tool limit reached; ask a narrower question." };
             if (!run) return { error: `No such tool: ${call.name}` };
             return run(call.input).catch((e) => ({ error: String(e.message || e) }));
@@ -214,7 +228,7 @@ export async function POST(request) {
         // Turn two: the answer, streamed. Tools are withheld so it writes
         // from what it just got rather than looping for more.
         if (aws) {
-          await onAws("answer", (c) => answerAws(c, system, messages, TOOL_SCHEMA, sendAnswerText));
+          await onAws("answer", (c) => answerAws(c, system, messages, tools, sendAnswerText));
           return;
         }
         const answer = anthropic.messages.stream({
@@ -222,7 +236,7 @@ export async function POST(request) {
           max_tokens: ANSWER_MAX_TOKENS,
           system,
           messages,
-          tools: TOOL_SCHEMA,
+          tools,
           tool_choice: { type: "none" },
         });
         answer.on("text", (delta) => {

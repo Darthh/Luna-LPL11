@@ -6,6 +6,8 @@ import PortfolioWheel from "@/components/PortfolioWheel";
 import { holdingColors } from "@/lib/portfolioColors";
 import { extractPdfText, parseHoldings } from "@/lib/parseHoldings";
 import { MODEL_PORTFOLIOS } from "@/lib/portfolioModels";
+import { useSession } from "next-auth/react";
+import { workspaceRequest, downloadDocument } from "@/lib/workspaceClient.mjs";
 
 // The Advisor Tools screens. All three are the same shape - a searchable table
 // of saved things with a toolbar over it - and differ in what a row is:
@@ -18,9 +20,8 @@ import { MODEL_PORTFOLIOS } from "@/lib/portfolioModels";
 // holdings by /api/portfolio-performance whenever the table is shown, because
 // a saved return is wrong the next morning.
 //
-// ponytail: localStorage, same as the watchlist's anonymous path. These are
-// the advisor's own saved views; moving them to the API is the change to make
-// when they need to follow a login across devices.
+// Signed-in records live in the account. Legacy browser records are imported
+// only on an explicit click, since their original owner cannot be established.
 const KEY = (kind) => `advisor:${kind}`;
 
 function load(kind) {
@@ -140,16 +141,37 @@ function usePerformance(rows) {
 }
 
 export default function AdvisorWorkspace({ kind }) {
+  const { data: session, status } = useSession();
+  const userId = session?.user?.id;
   const cfg = CONFIG[kind];
   const [saved, setSaved] = useState([]);
   const [query, setQuery] = useState("");
   const [modal, setModal] = useState(null);
   const [editing, setEditing] = useState(null);
+  const [storageError, setStorageError] = useState("");
+  const [working, setWorking] = useState(false);
+  const [legacyCount, setLegacyCount] = useState(0);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setSaved(load(kind));
-  }, [kind]);
+    let active = true;
+    async function reload() {
+      setSaved([]); setEditing(null); setModal(null); setStorageError("");
+      if (status === "loading") return;
+      if (!userId) { setSaved(load(kind)); setLegacyCount(0); return; }
+      setWorking(true); setLegacyCount(load(kind).length);
+      try {
+        const { items } = await workspaceRequest(`/api/advisor-items?kind=${kind}`, null, "GET");
+        if (!active) return;
+        setSaved(items);
+        const selected = items.find(item => item.id === new URLSearchParams(window.location.search).get("item"));
+        if (selected) { setEditing(selected); setModal("edit"); }
+      } catch (e) { if (active) setStorageError(e.message); }
+      finally { if (active) setWorking(false); }
+    }
+    reload();
+    window.addEventListener("luna-workspace-changed", reload);
+    return () => { active = false; window.removeEventListener("luna-workspace-changed", reload); };
+  }, [kind, userId, status]);
 
   // The model shelf ships with the app, so its rows are the strategy list plus
   // whatever the advisor has saved of their own.
@@ -181,25 +203,57 @@ export default function AdvisorWorkspace({ kind }) {
     [kind]
   );
 
-  const upsert = useCallback(
-    (row) => {
-      const id = row.id ?? String(Date.now());
-      const next = saved.some((r) => r.id === id)
-        ? saved.map((r) => (r.id === id ? { ...r, ...row, id } : r))
-        : [{ ...row, id, opened: new Date().toISOString() }, ...saved];
-      commit(next);
-      setModal(null);
-      setEditing(null);
-    },
-    [commit, saved]
-  );
+  const upsert = useCallback(async (row, targetKind = kind) => {
+    setWorking(true); setStorageError("");
+    try {
+      if (userId) {
+        const existing = !row.builtIn && targetKind === kind && saved.find(r => r.id === row.id);
+        const { item } = await workspaceRequest(`/api/advisor-items?kind=${targetKind}`, { ...existing, ...row, id: existing?.id, revision: existing?.revision }, existing ? "PUT" : "POST");
+        if (targetKind === kind) setSaved(current => [item, ...current.filter(r => r.id !== item.id)]);
+      } else {
+        const id = !row.builtIn && row.id || crypto.randomUUID();
+        const previous = targetKind === kind ? saved : load(targetKind);
+        const next = [{ ...row, builtIn: false, id, opened: new Date().toISOString() }, ...previous.filter(r => r.id !== id)];
+        if (targetKind === kind) commit(next); else save(targetKind, next);
+      }
+      setModal(null); setEditing(null);
+    } catch (e) { setStorageError(e.message); }
+    finally { setWorking(false); }
+  }, [kind, userId, saved, commit]);
 
-  const remove = useCallback((id) => commit(saved.filter((r) => r.id !== id)), [commit, saved]);
+  const remove = useCallback(async id => {
+    setWorking(true); setStorageError("");
+    try {
+      if (userId) {
+        const row = saved.find(r => r.id === id);
+        await workspaceRequest(`/api/advisor-items?kind=${kind}`, { id, revision: row.revision }, "DELETE");
+        setSaved(current => current.filter(r => r.id !== id));
+      } else commit(saved.filter(r => r.id !== id));
+    } catch (e) { setStorageError(e.message); }
+    finally { setWorking(false); }
+  }, [kind, userId, saved, commit]);
+
+  async function importLegacy() {
+    setWorking(true); setStorageError("");
+    try {
+      const pending = load(kind);
+      for (const row of pending) {
+        const { item } = await workspaceRequest(`/api/advisor-items?kind=${kind}`, row);
+        setSaved(current => [item, ...current]);
+        const remaining = load(kind).filter(r => r.id !== row.id);
+        save(kind, remaining); setLegacyCount(remaining.length);
+      }
+    } catch (e) { setStorageError(e.message); }
+    finally { setWorking(false); }
+  }
 
   const shown = rows.filter((r) => r.name.toLowerCase().includes(query.trim().toLowerCase()));
 
   return (
     <div className="adv">
+      <p className="adv-note">{userId ? "Saved to your account" : "Browser workspace · sign in to save to your account and use your data in New Chat."}{working ? " · Loading…" : ""}</p>
+      {storageError && <p className="adv-note adv-error" role="alert">{storageError}</p>}
+      {userId && legacyCount > 0 && <p className="adv-note">{legacyCount} older records are saved in this browser. <button className="adv-btn" type="button" disabled={working} onClick={importLegacy}>Import into my account</button></p>}
       <div className="adv-head">
         <h1>{cfg.title}</h1>
         <div className="adv-actions">
@@ -214,6 +268,7 @@ export default function AdvisorWorkspace({ kind }) {
           <button
             type="button"
             className="adv-btn primary"
+            disabled={working || status === "loading"}
             onClick={() => {
               setEditing(null);
               setModal(kind === "reports" ? "report" : "create");
@@ -261,6 +316,7 @@ export default function AdvisorWorkspace({ kind }) {
                       <button
                         type="button"
                         className="adv-rowmenu"
+                        disabled={working}
                         title={`Copy ${r.name} into my portfolios`}
                         aria-label={`Copy ${r.name} into my portfolios`}
                         onClick={() =>
@@ -293,6 +349,11 @@ export default function AdvisorWorkspace({ kind }) {
                       {r.name}
                     </button>
                     {r.blurb && <small className="adv-blurb">{r.blurb}</small>}
+                    {userId && (r.content || r.table || r.holdings?.length > 0) && <span>
+                      {["csv", "pdf"].map(format => <button key={format} className="adv-btn" type="button" disabled={working} onClick={async () => {
+                        try { await downloadDocument({ ...r, destination: kind }, format); } catch (e) { setStorageError(e.message); }
+                      }}>{format.toUpperCase()}</button>)}
+                    </span>}
                   </td>
                   <td className="adv-holdings">
                     {(r.holdings ?? []).map((h) => h.symbol).join(", ") || "-"}
@@ -333,8 +394,9 @@ export default function AdvisorWorkspace({ kind }) {
         />
       )}
       {modal === "edit" && editing && (
-        <PortfolioEditor
+        kind === "reports" ? <ReportEditor row={editing} disabled={working} onClose={() => { setModal(null); setEditing(null); }} onSave={upsert} /> : <PortfolioEditor
           row={editing}
+          disabled={working}
           performance={perf[editing.id]}
           onClose={() => {
             setModal(null);
@@ -346,12 +408,23 @@ export default function AdvisorWorkspace({ kind }) {
       {modal === "report" && (
         <CreateReport
           portfolios={rows}
+          disabled={working}
           onClose={() => setModal(null)}
-          onCreate={(row) => (kind === "reports" ? upsert(row) : setModal(null))}
+          onCreate={(row) => upsert(row, "reports")}
         />
       )}
     </div>
   );
+}
+
+function ReportEditor({ row, disabled, onClose, onSave }) {
+  const [name, setName] = useState(row.name);
+  const [content, setContent] = useState(row.content || "");
+  return <Modal title="Report" onClose={onClose} wide footer={<button type="button" className="adv-btn primary" disabled={disabled || !name.trim()} onClick={() => onSave({ ...row, name, content })}>Save report</button>}>
+    <div className="adv-form"><label>Report title<input value={name} onChange={e => setName(e.target.value)} /></label><label>Content<textarea value={content} onChange={e => setContent(e.target.value)} rows={15} /></label></div>
+    {row.holdings?.length > 0 && <p>{row.holdings.map(h => `${h.symbol}: ${h.weight != null ? `${h.weight}%` : `${h.shares ?? ""} shares`}`).join(", ")}</p>}
+    {row.table && <div style={{ overflowX: "auto" }}><table className="adv-table"><thead><tr>{row.table.columns.map((c, i) => <th key={i}>{c}</th>)}</tr></thead><tbody>{row.table.rows.map((r, i) => <tr key={i}>{r.map((c, j) => <td key={j}>{c}</td>)}</tr>)}</tbody></table></div>}
+  </Modal>;
 }
 
 function downloadCsv(kind, rows, perf) {
@@ -540,7 +613,7 @@ function PasteBox({ onParsed }) {
 // either a share count or a weight. Both are offered because an advisor holds
 // client accounts in shares and models in percentages, and converting one to
 // the other needs a price the editor should not have to guess at.
-function PortfolioEditor({ row, performance, onClose, onSave }) {
+function PortfolioEditor({ row, performance, onClose, onSave, disabled }) {
   const [name, setName] = useState(row.name ?? "");
   const [mode, setMode] = useState(
     row.holdings?.some((h) => h.weight != null) ? "weight" : "shares"
@@ -657,7 +730,7 @@ function PortfolioEditor({ row, performance, onClose, onSave }) {
           <button
             type="button"
             className="adv-btn primary"
-            disabled={!name.trim() || !holdings.length}
+            disabled={disabled || !name.trim() || !holdings.length}
             onClick={() =>
               onSave({
                 id: row.builtIn ? undefined : row.id,
@@ -829,7 +902,7 @@ function PortfolioEditor({ row, performance, onClose, onSave }) {
 const today = () => new Date().toISOString().slice(0, 10);
 
 // Two steps: which portfolio and which report, then who it is for.
-function CreateReport({ portfolios, onClose, onCreate }) {
+function CreateReport({ portfolios, onClose, onCreate, disabled }) {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({
     kind: "one-pager",
@@ -859,13 +932,15 @@ function CreateReport({ portfolios, onClose, onCreate }) {
           <button
             type="button"
             className="adv-btn primary"
-            disabled={step === 2 && !form.name.trim()}
+            disabled={disabled || (step === 2 && !form.name.trim())}
             onClick={() => {
               if (step === 1) return setStep(2);
               const source = portfolios.find((p) => p.id === form.portfolioId);
               onCreate({
                 name: form.name.trim(),
                 client: form.client,
+                preparedBy: form.preparedBy,
+                content: `${form.name.trim()}\nPrepared for: ${form.client || "Unspecified"}\nPrepared by: ${form.preparedBy || "Unspecified"}\nPeriod: ${form.start} to ${form.end}\nPortfolio: ${source?.name || "None selected"}`,
                 holdings: source?.holdings ?? [],
               });
             }}

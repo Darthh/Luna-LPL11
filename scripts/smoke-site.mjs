@@ -30,7 +30,7 @@ const get = async (path) => {
   return res;
 };
 
-const PAGES = ["/", "/about", "/dashboard", "/dashboard/chat", "/stock/NVDA", "/hedge-funds", "/maps", "/supply-chain", "/screener", "/earnings-calendar"];
+const PAGES = ["/", "/about", "/dashboard", "/dashboard/chat", "/stock/NVDA", "/13Filings", "/maps", "/supply-chain", "/screener", "/earnings-calendar"];
 for (const path of PAGES) await check(`page ${path}`, async () => `${(await (await get(path)).text()).length} bytes`);
 
 await check("api /api/fear-greed", async () => {

@@ -153,3 +153,10 @@ html[data-layout="terminal"] #content .ai-workspace .ai-welcome h2 { font-size: 
 .ai-attachment-popover ul { max-height: 240px; overflow-y: auto; list-style: none; padding: 0; }
 .ai-attachment-popover li { padding: 10px 0; border-top: 1px solid var(--border, #333); overflow-wrap: anywhere; }
 .ai-attachment-popover li span { opacity: .7; margin-left: 8px; }
+.ai-document { margin: 16px 0; padding: 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel); }
+.ai-document details { margin-top: 10px; }
+.ai-document summary { cursor: pointer; }
+.ai-document table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+.ai-document th, .ai-document td { padding: 6px 10px; text-align: left; border-bottom: 1px solid var(--border); }
+.ai-document-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; }
+.ai-document-actions button { padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; color: inherit; background: transparent; cursor: pointer; }

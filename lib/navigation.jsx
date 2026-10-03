@@ -250,7 +250,7 @@ export const NAV_LINKS = [
       { href: "/client-portfolios", label: "Client Portfolios", icon: BriefcaseIcon },
       { href: "/model-portfolios", label: "Model Portfolios", icon: PieIcon },
       { href: "/reports", label: "Reports", icon: ReportIcon },
-      { href: "/hedge-funds", label: "13F Filings", icon: FilingIcon, widget: "hedgeFunds" },
+      { href: "/13Filings", label: "13F Filings", icon: FilingIcon, widget: "hedgeFunds" },
     ],
   },
   {

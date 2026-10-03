@@ -76,7 +76,7 @@ export default function WelcomeHome() {
           <Link href="/dashboard"><span>01</span><strong>Market dashboard</strong><small>Sentiment, events, movers, watchlists</small><i>→</i></Link>
           <Link href="/screener"><span>02</span><strong>Stock screener</strong><small>Filter the market by the metrics that matter</small><i>→</i></Link>
           <Link href="/maps"><span>03</span><strong>Maps &amp; relationships</strong><small>See sectors, portfolios, and supply chains</small><i>→</i></Link>
-          <Link href="/hedge-funds"><span>04</span><strong>Institutional holdings</strong><small>Explore public 13F portfolios over time</small><i>→</i></Link>
+          <Link href="/13Filings"><span>04</span><strong>Institutional holdings</strong><small>Explore public 13F portfolios over time</small><i>→</i></Link>
         </div>
       </section>
 

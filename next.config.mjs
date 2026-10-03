@@ -5,6 +5,7 @@ const nextConfig = {
   // which points it at all of C:\Users\patri. It then tries to scan that whole
   // tree on the first request, and dev serves nothing at all while it does.
   turbopack: { root: import.meta.dirname },
+  outputFileTracingIncludes: { "/api/workspace-file": ["./assets/fonts/*"] },
   images: {
     // OpenNext's separate optimizer is unreliable when bundled on Windows.
     // Serve these already-small assets directly and avoid an extra Lambda call.
@@ -28,6 +29,8 @@ const nextConfig = {
   // so that traffic lands on the site instead of a dead end.
   async redirects() {
     return [
+      { source: "/hedge-funds", destination: "/13Filings", permanent: true },
+      { source: "/hedge-funds/:path*", destination: "/13Filings/:path*", permanent: true },
       { source: "/fear-and-greed-index-today", destination: "/", permanent: true },
       { source: "/fear-and-greed-history", destination: "/", permanent: true },
       { source: "/fear-and-greed-vs/:ticker", destination: "/", permanent: true },

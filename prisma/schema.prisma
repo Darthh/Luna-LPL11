@@ -73,6 +73,19 @@ model AdvisorClient {
   @@index([userId])
 }
 
+// Account-owned advisor workspace records, including generated report content.
+model AdvisorItem {
+  id        String   @id @default(cuid())
+  userId    String
+  kind      String
+  data      String
+  revision  Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, kind])
+}
+
 model Account {
   id                String  @id @default(cuid())
   userId            String

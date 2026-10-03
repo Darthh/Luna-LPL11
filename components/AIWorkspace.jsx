@@ -9,10 +9,14 @@ import ChatSuggestions from "@/components/ChatSuggestions";
 import ChatGreeting from "@/components/ChatGreeting";
 import { memoryFromChats, memoryMessages } from "@/lib/chatMemory.mjs";
 import { ollamaModels, ollamaChat } from "@/lib/ollamaClient.mjs";
-import { readChats, saveChat } from "@/lib/chatHistory";
+import { readChats, saveChat, setChatAccount } from "@/lib/chatHistory";
 import { STOCK_RANGES, chartGeometry, stockLookupsForMessages, stockLookupsForAnswer, loadStockCards, isChatStockSymbolAllowed } from "@/lib/chatStockCard.mjs";
 import { HOSTED_MODELS, DEFAULT_HOSTED_MODEL } from "@/lib/hostedModels.mjs";
 import AIResearchPanel from "./AIResearchPanel";
+import { useSession } from "next-auth/react";
+import ChatDocument from "./ChatDocument";
+import { localWorkspaceMessages, parseDocumentAnswer, requestedSave } from "@/lib/accountWorkspace.mjs";
+import { workspaceRequest, saveDocument } from "@/lib/workspaceClient.mjs";
 
 const LOCAL_KEY = "lunaLocalModel";
 const LOCAL_SECRET_KEY = "lunaLocalModelKey";
@@ -224,6 +228,10 @@ async function readLocalResponse(response, onText) {
 }
 
 export default function AIWorkspace({ chatId = null }) {
+  const { data: session, status: authStatus } = useSession();
+  const accountId = session?.user?.id;
+  const [accountData, setAccountData] = useState(true);
+  const [accountStatus, setAccountStatus] = useState("");
   const [webSearch, setWebSearch] = useState(false);
   const [searching, setSearching] = useState(false);
   const modelWindow = useRef(null);
@@ -244,8 +252,12 @@ export default function AIWorkspace({ chatId = null }) {
   const [memoryScope, setMemoryScope] = useState(null);
   const scroller = useRef(null);
   const activeChatId = useRef(chatId);
+  const accountRef = useRef(accountId);
 
   useEffect(() => {
+    if (authStatus === "loading") return;
+    setChatAccount(accountId);
+    accountRef.current = accountId;
     activeChatId.current = chatId;
     const chat = chatId ? readChats().find((entry) => entry.id === chatId) : null;
     // Browser storage is only available after hydration.
@@ -253,11 +265,13 @@ export default function AIWorkspace({ chatId = null }) {
     setMessages(chat?.messages || []);
     setInput("");
     setError("");
+    setBusy(false);
+    setAccountStatus("");
     if (!chatId) {
       setMode("hosted");
       setHostedModel(DEFAULT_HOSTED_MODEL);
     }
-  }, [chatId]);
+  }, [chatId, accountId, authStatus]);
 
   useEffect(() => {
     const reset = () => {
@@ -268,6 +282,7 @@ export default function AIWorkspace({ chatId = null }) {
       setMode("hosted");
       setHostedModel(DEFAULT_HOSTED_MODEL);
       setSettingsOpen(false);
+      setDocumentIds([]);
     };
     window.addEventListener("luna-new-chat", reset);
     return () => window.removeEventListener("luna-new-chat", reset);
@@ -338,7 +353,8 @@ export default function AIWorkspace({ chatId = null }) {
 
   async function send(value) {
     const question = value.trim();
-    if (!question || busy) return;
+    if (!question || busy || authStatus === "loading") return;
+    const ownerAtStart = accountId;
     const lookups = stockLookupsForMessages(question);
     const stockCardsPromise = loadStockCards(lookups);
     const history = [...messages.filter((message) => !message.error), { role: "user", content: question }];
@@ -352,14 +368,16 @@ export default function AIWorkspace({ chatId = null }) {
     setSettingsOpen(false);
     setMessages([...history, { role: "assistant", content: "" }]);
     let sources = [];
-    const update = (content) => setMessages((current) => [
+    let drafts = [];
+    const isCurrent = () => accountRef.current === ownerAtStart && activeChatId.current === conversationId;
+    const update = (content) => { if (isCurrent()) setMessages((current) => [
       ...current.slice(0, -1),
       { ...current.at(-1), role: "assistant", content, sources, model: activeLabel },
-    ]);
+    ]); };
 
     let pending = true;
     stockCardsPromise.then((stockCards) => {
-      if (!pending || activeChatId.current !== conversationId || !stockCards.length) return;
+      if (!pending || !isCurrent() || !stockCards.length) return;
       setMessages((current) => [
         ...current.slice(0, -1),
         { ...current.at(-1), stockCards },
@@ -369,6 +387,16 @@ export default function AIWorkspace({ chatId = null }) {
     try {
       let answer;
       let outgoing = history.map(({ role, content }) => ({ role, content }));
+      if (accountData && accountId && mode !== "hosted") {
+        try {
+          const workspace = await workspaceRequest("/api/account-workspace", { query: question });
+          outgoing = localWorkspaceMessages(outgoing, workspace);
+          setAccountStatus(Object.values(workspace.sections).some(s => s.status !== "ready") ? "Some account data is unavailable" : "Account data connected");
+        } catch (e) {
+          setAccountStatus(e.message);
+          throw new Error("Could not read your account data. Retry or turn off Account data to continue without it.");
+        }
+      }
       const excluded = history.slice(-12).filter((message) => message.role === "user").map((message) => message.content);
       try {
         const response = await fetch("/api/chat-memory", {
@@ -406,9 +434,10 @@ export default function AIWorkspace({ chatId = null }) {
         const response = await fetch("/api/ai-chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages: outgoing, model: hostedModel, webResearch: webSearch, conversationId, documentIds }),
+          body: JSON.stringify({ messages: outgoing, model: hostedModel, webResearch: webSearch, conversationId, documentIds, workspace: accountData }),
         });
         answer = await readHostedResponse(response, update, data => {
+          if (data?.result?.draft && drafts.length < 3) drafts.push(data.result.draft);
           for (const source of data?.result?.sources || []) {
             if (!sources.some(existing => existing.url === source.url)) sources.push(source);
           }
@@ -428,12 +457,25 @@ export default function AIWorkspace({ chatId = null }) {
         answer = await readLocalResponse(response, update);
       }
       if (!answer?.trim()) throw new Error("The model returned an empty answer.");
+      if (!isCurrent()) return;
+      const parsed = parseDocumentAnswer(answer);
+      answer = parsed.content || "Your document is ready to preview and download.";
+      drafts.push(...parsed.drafts);
+      drafts = drafts.slice(0, 3);
+      for (const draft of drafts) {
+        if (!isCurrent()) return;
+        if (requestedSave(question, draft.destination)) {
+          try { draft.savedId = (await saveDocument(draft)).id; }
+          catch (e) { draft.saveError = `Not saved: ${e.message}`; }
+        }
+      }
       const stockCards = await stockCardsPromise;
       const answerLookups = stockLookupsForAnswer(answer).filter(lookup =>
         !lookups.some(existing => existing.symbol === lookup.symbol) &&
         !stockCards.some(card => card.symbol === lookup.symbol));
       stockCards.push(...await loadStockCards(answerLookups));
-      const assistantMessage = { role: "assistant", content: answer, sources, model: activeLabel, stockCards };
+      if (!isCurrent()) return;
+      const assistantMessage = { role: "assistant", content: answer, sources, model: activeLabel, stockCards, documents: drafts };
       setMessages([...history, assistantMessage]);
       saveChat({
         id: conversationId,
@@ -441,14 +483,14 @@ export default function AIWorkspace({ chatId = null }) {
         messages: [...history, assistantMessage],
       });
     } catch (reason) {
+      if (!isCurrent()) return;
       const message = reason instanceof Error ? reason.message : String(reason);
       setError(message);
       const stockCards = await stockCardsPromise;
       setMessages((current) => [...current.slice(0, -1), { role: "assistant", content: message, error: true, stockCards }]);
     } finally {
       pending = false;
-      setSearching(false);
-      setBusy(false);
+      if (isCurrent()) { setSearching(false); setBusy(false); }
     }
   }
 
@@ -475,6 +517,12 @@ export default function AIWorkspace({ chatId = null }) {
                   ? <p key={card.symbol}>Chart data is unavailable for <Link href={`/stock/${encodeURIComponent(card.symbol)}`}>{card.symbol}</Link>. Open the stock page to try again.</p>
                   : <StockQuoteCard key={card.symbol} card={card} />)}
                 {message.content ? <Rich text={message.content} /> : <span className="ai-thinking">{searching ? "Searching the web" : "Thinking"}</span>}
+                {message.documents?.map(draft => <ChatDocument key={draft.draftId} draft={draft} onSave={saved => {
+                  if (accountRef.current !== accountId) return;
+                  const next = messages.map((m, i) => i !== index ? m : { ...m, documents: m.documents.map(d => d.draftId === saved.draftId ? saved : d) });
+                  setMessages(next);
+                  saveChat({ id: activeChatId.current, title: next[0]?.content.slice(0, 60) || "Chat", messages: next });
+                }} />)}
                 {message.sources?.length > 0 && <div className="ai-sources" aria-label="Web sources"><span>Sources</span>{message.sources.map((source, i) => <a key={source.url} href={source.url} target="_blank" rel="noopener noreferrer">{i + 1}. {source.title}</a>)}</div>}
               </article>
             ))}
@@ -498,6 +546,7 @@ export default function AIWorkspace({ chatId = null }) {
             maxLength={8000}
           />
           <div className="ai-composer-tools">
+            <button type="button" className="ai-tool-button" disabled={busy || authStatus !== "authenticated"} aria-pressed={accountData && !!accountId} onClick={() => setAccountData(on => !on)} title={accountId ? "Use your account watchlist, portfolios, reports and Finance CRM with the selected model." : "Sign in to use your account data."}>Account data{accountId && accountData ? " on" : ""}</button>
             {mode === "hosted" && <AIResearchPanel disabled={busy} selected={documentIds} onSelect={setDocumentIds} />}
             <button type="button" className="ai-tool-button ai-web-toggle" disabled={busy} onClick={() => setWebSearch((on) => !on)} aria-pressed={webSearch} title="Search the web before answering. Your question is sent to Luna's search service.">
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18"/></svg>
@@ -508,6 +557,7 @@ export default function AIWorkspace({ chatId = null }) {
             </button>
             <button type="submit" className="ai-send-button" disabled={busy || !input.trim()} aria-label="Send message">↑</button>
           </div>
+          {accountStatus && <span className="ai-memory-status" role="status">{accountStatus}</span>}
 
         {settingsOpen && (
           <div ref={modelWindow} id="ai-model-window" className="ai-settings" role="dialog" aria-label="Choose a model">

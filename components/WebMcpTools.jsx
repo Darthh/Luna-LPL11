@@ -138,7 +138,7 @@ export default function WebMcpTools() {
               { path: "/screener", title: "Stock screener" },
               { path: "/maps", title: "Stock map - the market by sector and size" },
               { path: "/supply-chain", title: "Supply chain relationships" },
-              { path: "/hedge-funds", title: "Hedge fund holdings (13F)" },
+              { path: "/13Filings", title: "13F Filings" },
               { path: "/market-cap", title: "Market cap ranking" },
               { path: "/earnings-calendar", title: "Earnings calendar" },
               { path: "/watchlist", title: "Your watchlist and portfolio" },
