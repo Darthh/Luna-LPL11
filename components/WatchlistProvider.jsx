@@ -61,6 +61,8 @@ export function WatchlistProvider({ children }) {
 
   useEffect(() => {
     try {
+      // Browser storage is only available after hydration.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTapeEnabled(localStorage.getItem(TAPE_KEY) === "1");
     } catch {
       /* leave it off */
@@ -72,6 +74,8 @@ export function WatchlistProvider({ children }) {
     let cancelled = false;
 
     if (!signedIn) {
+      // Signed-out users have no server watchlist; clear without a fetch.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setItems([]);
       setLoading(false);
       return;

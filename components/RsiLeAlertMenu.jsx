@@ -26,6 +26,8 @@ export default function RsiLeAlertMenu({ enabled, onToggle }) {
   const [value, setValue] = useState("");
   const rootRef = useRef(null);
 
+  // Rules live in browser storage, readable only after hydration.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setRules(readRsiLeRules()), [open]);
 
   // Click-away and Escape, so the menu behaves like the other toolbar popovers.

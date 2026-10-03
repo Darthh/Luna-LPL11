@@ -83,6 +83,8 @@ export default function StockMap() {
   // links in that way).
   useEffect(() => {
     const requested = new URLSearchParams(window.location.search).get("index");
+    // The URL query is only readable on the client after hydration.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIndex(INDEXES.some((i) => i.key === requested) ? requested : DEFAULT_INDEX);
   }, []);
 

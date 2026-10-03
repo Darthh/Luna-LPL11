@@ -27,8 +27,13 @@ generator client {
 // Prisma 7 keeps connection URLs out of the schema: the CLI reads
 // prisma.config.mjs, and the client is handed a URL at construction time
 // (lib/prisma.js, which signs a fresh IAM token for it).
+//
+// relationMode "prisma": Aurora DSQL has no foreign keys, so the client
+// enforces relations and runs the cascading deletes itself. That makes every
+// relation column worth an index (see migrations/0003_relation_indexes.sql).
 datasource db {
-  provider = "postgresql"
+  provider     = "postgresql"
+  relationMode = "prisma"
 }
 
 model User {
@@ -85,6 +90,7 @@ model Account {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
+  @@index([userId])
 }
 
 model Session {
@@ -94,6 +100,8 @@ model Session {
   expires      DateTime
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model VerificationToken {
@@ -140,6 +148,7 @@ model ForumThread {
   replies   ForumReply[]
   likes     ForumLike[]
 
+  @@index([authorId])
   @@index([sector, createdAt])
 }
 
@@ -153,6 +162,7 @@ model ForumReply {
   author    User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
   likes     ForumLike[]
 
+  @@index([authorId])
   @@index([threadId, createdAt])
 }
 
@@ -174,6 +184,8 @@ model ForumLike {
   replyId    String?
   reply      ForumReply?  @relation(fields: [replyId], references: [id], onDelete: Cascade)
 
+  @@index([threadId])
+  @@index([replyId])
   @@unique([userId, threadId])
   @@unique([userId, replyId])
   @@index([receiverId])

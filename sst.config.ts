@@ -1,44 +1,142 @@
 /// <reference path="./.sst/platform/config.d.ts" />
 
+// Luna Terminal on AWS (SST v4). How to deploy: docs/DEPLOY.md. Why it looks
+// like this: docs/BACKEND_PLAN.md.
+//
+//   CloudFront -> Lambda "Site" (Next.js via OpenNext, streaming)
+//                   |-> Bedrock        hosted chat models (lib/hostedModels.mjs)
+//                   |-> AgentCore      the chat's tool-using agent runtime      } infra/research.ts
+//                   |-> S3 Vectors     uploaded-document search (Titan v2)    } (always on;
+//                   |-> S3 Tables      research history via Athena            }  see
+//                   |-> Lambda durable document extraction and reports       }  docs/AWS_AGENT_RESEARCH.md)
+//                   |-> DynamoDB  LunaData   saved chats, shared rate limits   } only with
+//                   |-> S3        LunaFiles  13F filing cache, avatars         } LUNA_DATA=true
+//                   |-> Aurora DSQL LunaDb   accounts, watchlists, alerts, CRM }
+//
+// Everything reaches AWS through the Lambda's IAM role: no database password,
+// no AI key, no AWS keys. Third-party API keys are SST secrets
+// (`npx sst secret set <Name> <value> --stage <stage>`).
+//
+// The app and site names are the ones the AI preview was first deployed under;
+// renaming either would create a second stack and a new CloudFront URL.
+
 export default $config({
-  app() {
-    return { name: "luna-ai-preview", home: "aws", removal: "remove", providers: { aws: { region: "us-east-1" } } };
+  app(input) {
+    const production = input?.stage === "production";
+    return {
+      name: "luna-ai-preview",
+      home: "aws",
+      // Keep data when a production stage is removed; tear other stages down.
+      removal: production ? "retain" : "remove",
+      protect: production,
+      providers: { aws: { region: "us-east-1" } },
+    };
   },
   async run() {
     const sst = await import("./.sst/platform/src/components/index.js");
-    // Preview hosting uses Lambda IAM, never the workshop session credentials.
-    // Account persistence is deliberately not provisioned by this AI preview.
+    const production = $app.stage === "production";
+
+    // ---- secrets -----------------------------------------------------------
+    // Required. Signs Auth.js session cookies.
     const authSecret = new sst.Secret("AuthSecret");
     const geminiSecret = process.env.ENABLE_GEMINI === "true" ? new sst.Secret("GeminiApiKey") : null;
+    // Optional feeds: an empty placeholder means "feature off" - the app treats
+    // an empty variable the same as a missing one.
+    const optional = (name: string) => new sst.Secret(name, "");
+    const secrets = {
+      ANTHROPIC_API_KEY: optional("AnthropicApiKey"),
+      EXA_API_KEY: optional("ExaApiKey"),
+      FINNHUB_API_KEY: optional("FinnhubApiKey"),
+      TWELVEDATA_API_KEY: optional("TwelvedataApiKey"),
+      ALPHAVANTAGE_API_KEY: optional("AlphavantageApiKey"),
+      FMP_API_KEY: optional("FmpApiKey"),
+      POLYGON_API_KEY: optional("PolygonApiKey"),
+      TRADIER_API_TOKEN: optional("TradierApiToken"),
+      AUTH_GOOGLE_ID: optional("AuthGoogleId"),
+      AUTH_GOOGLE_SECRET: optional("AuthGoogleSecret"),
+      RESEND_API_KEY: optional("ResendApiKey"),
+      CRON_SECRET: optional("CronSecret"),
+      TURNSTILE_SECRET_KEY: optional("TurnstileSecretKey"),
+      PRIVATE_PASSWORD: optional("PrivatePassword"),
+      ANTHROPIC_WORKSPACE_ID: optional("AnthropicWorkspaceId"),
+    };
+
+    // ---- data (opt-in) -----------------------------------------------------
+    // Off by default so an AI-preview deploy into a restricted workshop account
+    // creates nothing beyond the site. LUNA_DATA=true adds the stores that
+    // accounts, saved chats and shared rate limits need.
+    const withData = process.env.LUNA_DATA === "true";
+    const data = withData
+      ? {
+          // One table, many item types (PK/SK + GSI1). Items that should
+          // expire set `expiresAt` (epoch seconds); DynamoDB deletes them.
+          table: new sst.aws.Dynamo("LunaData", {
+            fields: { PK: "string", SK: "string", GSI1PK: "string", GSI1SK: "string" },
+            primaryIndex: { hashKey: "PK", rangeKey: "SK" },
+            globalIndexes: { GSI1: { hashKey: "GSI1PK", rangeKey: "GSI1SK" } },
+            ttl: "expiresAt",
+            transform: {
+              table: (args) => {
+                args.pointInTimeRecovery = { enabled: production };
+                args.deletionProtectionEnabled = production;
+              },
+            },
+          }),
+          files: new sst.aws.Bucket("LunaFiles"),
+          // Serverless Postgres-compatible, IAM auth, no VPC. Schema:
+          // `npm run db:migrate:dsql` (scripts/dsql-migrate.mjs).
+          db: new sst.aws.Dsql("LunaDb", { backup: production }),
+        }
+      : null;
+
+    // ---- models + research -------------------------------------------------
+    // Exactly the hosted models in lib/hostedModels.mjs, nothing wider. The
+    // AgentCore runtime and the research worker get the same set.
     const modelPermissions = [
       { actions: ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"], resources: [
-        "arn:aws:bedrock:*::foundation-model/anthropic.claude-opus-5", "arn:aws:bedrock:*::foundation-model/openai.gpt-5.6-sol",
-        "arn:aws:bedrock:*:*:inference-profile/global.openai.gpt-5.6-sol", "arn:aws:bedrock:*:*:inference-profile/global.anthropic.claude-opus-5",
-        "arn:aws:bedrock:*::foundation-model/meta.llama4-maverick-17b-instruct-v1:0", "arn:aws:bedrock:*:*:inference-profile/us.meta.llama4-maverick-17b-instruct-v1:0",
+        "arn:aws:bedrock:*::foundation-model/anthropic.claude-opus-5",
+        "arn:aws:bedrock:*::foundation-model/openai.gpt-5.6-sol",
+        "arn:aws:bedrock:*:*:inference-profile/global.openai.gpt-5.6-sol",
+        "arn:aws:bedrock:*:*:inference-profile/global.anthropic.claude-opus-5",
+        "arn:aws:bedrock:*::foundation-model/meta.llama4-maverick-17b-instruct-v1:0",
+        "arn:aws:bedrock:*:*:inference-profile/us.meta.llama4-maverick-17b-instruct-v1:0",
       ] },
       { actions: ["bedrock-mantle:CreateInference"], resources: ["arn:aws:bedrock-mantle:us-east-1:*:project/*"],
         conditions: [{ test: "StringEquals", variable: "bedrock-mantle:Model", values: ["google.gemma-4-31b", "qwen.qwen3-235b-a22b-2507"] }] },
     ];
     const { researchInfrastructure } = await import("./infra/research");
     const research = await researchInfrastructure(sst, modelPermissions);
+
+    // ---- web ---------------------------------------------------------------
     const site = new sst.aws.Nextjs("Site", {
       buildCommand: "node scripts/build-aws.mjs",
-      environment: { AUTH_SECRET: authSecret.value, AUTH_TRUST_HOST: "true", ...research.environment,
-        ...(geminiSecret ? { GEMINI_API_KEY: geminiSecret.value } : {}) },
-      permissions: [...research.permissions,
-        { actions: ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"], resources: [
-          "arn:aws:bedrock:*::foundation-model/anthropic.claude-opus-5",
-          "arn:aws:bedrock:*::foundation-model/openai.gpt-5.6-sol",
-          "arn:aws:bedrock:*:*:inference-profile/global.openai.gpt-5.6-sol",
-          "arn:aws:bedrock:*:*:inference-profile/global.anthropic.claude-opus-5",
-          "arn:aws:bedrock:*::foundation-model/meta.llama4-maverick-17b-instruct-v1:0",
-          "arn:aws:bedrock:*:*:inference-profile/us.meta.llama4-maverick-17b-instruct-v1:0",
-        ] },
-        { actions: ["bedrock-mantle:CreateInference"], resources: ["arn:aws:bedrock-mantle:us-east-1:*:project/*"],
-          conditions: [{ test: "StringEquals", variable: "bedrock-mantle:Model", values: ["google.gemma-4-31b", "qwen.qwen3-235b-a22b-2507"] }] },
-      ],
+      link: data ? [data.table, data.files, data.db] : [],
+      environment: {
+        AUTH_SECRET: authSecret.value,
+        AUTH_TRUST_HOST: "true",
+        ALERT_FROM_EMAIL: process.env.ALERT_FROM_EMAIL ?? "",
+        ...research.environment,
+        ...(geminiSecret ? { GEMINI_API_KEY: geminiSecret.value } : {}),
+        ...(data
+          ? {
+              CHAT_TABLE: data.table.name,
+              RATE_LIMIT_TABLE: data.table.name,
+              DATA_BUCKET: data.files.name,
+              DSQL_ENDPOINT: data.db.endpoint,
+              DSQL_REGION: data.db.region,
+            }
+          : {}),
+        ...Object.fromEntries(Object.entries(secrets).map(([key, secret]) => [key, secret.value])),
+      },
+      permissions: [...research.permissions, ...modelPermissions],
       server: { memory: "2048 MB", timeout: "120 seconds" },
+      domain: process.env.LUNA_DOMAIN || undefined,
     });
-    return { url: site.url, ...research.outputs };
+
+    return {
+      url: site.url,
+      ...research.outputs,
+      ...(data ? { table: data.table.name, bucket: data.files.name, dsql: data.db.endpoint } : {}),
+    };
   },
 });

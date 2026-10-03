@@ -63,6 +63,8 @@ export default function ValuationGraph({ initialSymbol = "NVDA" }) {
     // A range change mid-flight must not let the slower answer overwrite the
     // newer one - the flag is checked before every set.
     let live = true;
+    // Reset to loading before each fetch; the live flag guards late answers.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     setError(null);
     fetch(`/api/valuation-history?symbol=${encodeURIComponent(symbol)}&range=${range}`)

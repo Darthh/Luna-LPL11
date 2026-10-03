@@ -10,6 +10,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Generated: OpenNext's Lambda bundle, SST's platform code, Prisma client.
+    ".open-next/**",
+    ".sst/**",
+    "lib/generated/**",
   ]),
 ]);
 

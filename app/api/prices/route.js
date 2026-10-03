@@ -22,7 +22,7 @@ export async function GET(request) {
   const session = await auth();
   const userId = session?.user?.id ?? null;
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
-  const rate = checkRateLimit(userId ?? `ip:${ip}`, userId ? SIGNED_IN_LIMIT : ANON_LIMIT);
+  const rate = await checkRateLimit(userId ?? `ip:${ip}`, userId ? SIGNED_IN_LIMIT : ANON_LIMIT);
   if (!rate.ok) {
     const error = userId
       ? "Hourly request limit reached. Please try again later."

@@ -101,6 +101,8 @@ export default function ValuationCompare({ initialSymbols = ["NVDA", "GOOGL", "M
   const key = symbols.join(",");
   useEffect(() => {
     if (!key) {
+      // Reset when the selection empties; the fetch below handles the rest.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setData(null);
       setLoading(false);
       return;
