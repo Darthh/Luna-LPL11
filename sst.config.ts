@@ -152,6 +152,10 @@ export default $config({
         AUTH_SECRET: authSecret.value,
         AUTH_TRUST_HOST: "true",
         ALERT_FROM_EMAIL: process.env.ALERT_FROM_EMAIL ?? "",
+        // Public, inlined into the signup form at build time. Set it (and the
+        // TurnstileSecretKey secret) only with a key whose allowed hostnames
+        // include this stage's URL; unset means no bot check.
+        NEXT_PUBLIC_TURNSTILE_SITE_KEY: process.env.TURNSTILE_SITE_KEY ?? "",
         ...research.environment,
         ...policyEnvironment,
         ...(geminiSecret ? { GEMINI_API_KEY: geminiSecret.value } : {}),

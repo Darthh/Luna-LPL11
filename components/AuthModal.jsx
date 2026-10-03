@@ -4,7 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import { signIn, getProviders } from "next-auth/react";
 import Script from "next/script";
 
-const TURNSTILE_SITE_KEY = "0x4AAAAAAEpjl73Tttic0_bm";
+// Turnstile is optional. A site key only works on the hostnames it was
+// created for in the Cloudflare dashboard; the old hardcoded key belonged to
+// the Cloudflare-era domain, so on the CloudFront URL the widget errored, no
+// token arrived and "Create account" stayed disabled. Without a key there is
+// no widget and the server skips the check too (app/api/auth/register).
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "";
 
 // Auth.js ships no sign-in/sign-up UI of its own (unlike Clerk), so this
 // modal owns the whole flow: it renders a Google button only if that
@@ -36,14 +41,17 @@ export default function AuthModal({ mode: initialMode, reason, onClose }) {
   // signin, so the widget is rendered explicitly against our own container
   // instead.
   useEffect(() => {
-    if (mode !== "signup" || !turnstileReady || !turnstileRef.current) return;
+    if (!TURNSTILE_SITE_KEY || mode !== "signup" || !turnstileReady || !turnstileRef.current) return;
     if (widgetIdRef.current !== null) return;
     widgetIdRef.current = window.turnstile.render(turnstileRef.current, {
       sitekey: TURNSTILE_SITE_KEY,
       theme: "dark",
       callback: setTurnstileToken,
       "expired-callback": () => setTurnstileToken(""),
-      "error-callback": () => setTurnstileToken(""),
+      "error-callback": () => {
+        setTurnstileToken("");
+        setError("The bot check could not load. Reload the page and try again.");
+      },
     });
     return () => {
       if (widgetIdRef.current !== null) {
@@ -97,10 +105,12 @@ export default function AuthModal({ mode: initialMode, reason, onClose }) {
 
   return (
     <div className="auth-modal-overlay" onClick={onClose}>
-      <Script
-        src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
-        onReady={() => setTurnstileReady(true)}
-      />
+      {TURNSTILE_SITE_KEY && (
+        <Script
+          src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
+          onReady={() => setTurnstileReady(true)}
+        />
+      )}
       <div className="auth-modal" onClick={(e) => e.stopPropagation()}>
         <button className="auth-modal-close" onClick={onClose} aria-label="Close">
           ×
@@ -154,9 +164,9 @@ export default function AuthModal({ mode: initialMode, reason, onClose }) {
               autoComplete={mode === "signup" ? "new-password" : "current-password"}
             />
           </label>
-          {mode === "signup" && <div className="auth-turnstile" ref={turnstileRef} />}
+          {mode === "signup" && TURNSTILE_SITE_KEY && <div className="auth-turnstile" ref={turnstileRef} />}
           {error && <div className="auth-form-error">{error}</div>}
-          <button type="submit" className="auth-btn auth-btn-primary auth-submit" disabled={busy || (mode === "signup" && !turnstileToken)}>
+          <button type="submit" className="auth-btn auth-btn-primary auth-submit" disabled={busy || (mode === "signup" && TURNSTILE_SITE_KEY && !turnstileToken)}>
             {busy ? "Please wait…" : mode === "signup" ? "Create account" : "Sign in"}
           </button>
         </form>
