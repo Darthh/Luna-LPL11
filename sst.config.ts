@@ -92,7 +92,7 @@ export default $config({
     // ---- models + research -------------------------------------------------
     // Exactly the hosted models in lib/hostedModels.mjs, nothing wider. The
     // AgentCore runtime and the research worker get the same set.
-    const modelPermissions = [
+    const modelPermissions: any[] = [
       { actions: ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"], resources: [
         "arn:aws:bedrock:*::foundation-model/anthropic.claude-opus-5",
         "arn:aws:bedrock:*::foundation-model/openai.gpt-5.6-sol",
@@ -104,8 +104,44 @@ export default $config({
       { actions: ["bedrock-mantle:CreateInference"], resources: ["arn:aws:bedrock-mantle:us-east-1:*:project/*"],
         conditions: [{ test: "StringEquals", variable: "bedrock-mantle:Model", values: ["google.gemma-4-31b", "qwen.qwen3-235b-a22b-2507"] }] },
     ];
+    // Opt-in Bedrock Guardrail (LUNA_GUARDRAIL=true): declines personal buy/
+    // sell/allocation advice and prompt attacks, for every model and for the
+    // agent. Off by default; turn on after `npm run check:bedrock` passes
+    // with BEDROCK_GUARDRAIL_ID set to the deployed guardrail.
+    const policyEnvironment: Record<string, any> = {
+      ...(process.env.BEDROCK_PROMPT_CACHE === "true" ? { BEDROCK_PROMPT_CACHE: "true" } : {}),
+    };
+    if (process.env.LUNA_GUARDRAIL === "true") {
+      const aws = await import("./.sst/platform/node_modules/@pulumi/aws/index.js");
+      const declined = "I can't give personal buy, sell or allocation advice. I can show the data - prices, history, sentiment, filings - so you can decide.";
+      const guardrail = new aws.bedrock.Guardrail("AdviceGuardrail", {
+        name: `luna-advice-${$app.stage}`,
+        blockedInputMessaging: declined,
+        blockedOutputsMessaging: declined,
+        topicPolicyConfig: {
+          topicsConfigs: [{
+            name: "personal_investment_advice",
+            type: "DENY",
+            definition: "Telling the user personally to buy, sell or hold a specific security, or how to allocate their own money, savings or retirement funds.",
+            examples: ["Should I buy NVDA right now?", "How much of my savings should I put into Tesla?", "Tell me which stock to buy to double my money.", "Should I sell my 401k and buy bitcoin?"],
+          }],
+        },
+        contentPolicyConfig: {
+          filtersConfigs: [
+            { type: "PROMPT_ATTACK", inputStrength: "HIGH", outputStrength: "NONE" },
+            { type: "HATE", inputStrength: "MEDIUM", outputStrength: "MEDIUM" },
+            { type: "INSULTS", inputStrength: "MEDIUM", outputStrength: "MEDIUM" },
+            { type: "MISCONDUCT", inputStrength: "MEDIUM", outputStrength: "MEDIUM" },
+          ],
+        },
+      });
+      const version = new aws.bedrock.GuardrailVersion("AdviceGuardrailVersion", { guardrailArn: guardrail.guardrailArn, description: "Luna advice policy" });
+      policyEnvironment.BEDROCK_GUARDRAIL_ID = guardrail.guardrailId;
+      policyEnvironment.BEDROCK_GUARDRAIL_VERSION = version.version;
+      modelPermissions.push({ actions: ["bedrock:ApplyGuardrail"], resources: [guardrail.guardrailArn] });
+    }
     const { researchInfrastructure } = await import("./infra/research");
-    const research = await researchInfrastructure(sst, modelPermissions);
+    const research = await researchInfrastructure(sst, modelPermissions, policyEnvironment);
 
     // ---- web ---------------------------------------------------------------
     const site = new sst.aws.Nextjs("Site", {
@@ -116,6 +152,7 @@ export default $config({
         AUTH_TRUST_HOST: "true",
         ALERT_FROM_EMAIL: process.env.ALERT_FROM_EMAIL ?? "",
         ...research.environment,
+        ...policyEnvironment,
         ...(geminiSecret ? { GEMINI_API_KEY: geminiSecret.value } : {}),
         ...(data
           ? {

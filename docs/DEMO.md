@@ -33,7 +33,7 @@ flowchart LR
 | **DynamoDB** | Saved chats (sync across devices) and rate limits shared by all Lambdas | Key-value access, atomic counters, TTL expiry, no servers |
 | **Aurora DSQL** | Accounts, watchlists, advisor CRM | Serverless Postgres with IAM auth: no password, no VPC |
 | **S3** | Filing cache and files | Immutable documents, cheap storage |
-| **CloudWatch** | One JSON log line per model failure (kind, model, region, request id) | Logs Insights can count failures by model |
+| **CloudWatch** | Latency, tokens and errors per model (`LunaTerminal/AI` metrics), and one JSON log line per failure | Compare models on speed and cost; find causes in Logs Insights |
 | **IAM** | The Lambda may call exactly the five models, nothing wider | Least privilege, visible in `sst.config.ts` |
 
 Infrastructure is code (`sst.config.ts`). One `npx sst deploy` reproduces the
@@ -51,7 +51,10 @@ stack, and GitHub Actions can deploy over OIDC with no stored AWS keys.
 4. **Resilient.** A temporary AWS error is retried once. If one model is
    unavailable, a backup model answers and the user is told which one did.
    Failures show their real cause (credentials, access, throttling...).
-5. **Fast.** Each question's tools run in parallel, and the answer streams.
+5. **Fast.** Each question's tools run in parallel (in the site and in the
+   AgentCore agent), and the answer streams.
+6. **Governed (optional).** A Bedrock Guardrail can decline personal buy/sell
+   advice for every model (`LUNA_GUARDRAIL=true`).
 
 ## 3-minute demo script
 
@@ -78,6 +81,8 @@ stack, and GitHub Actions can deploy over OIDC with no stored AWS keys.
 ## Before presenting
 
 - Deploy with `npm run deploy:aws` (it builds the AgentCore bundle first).
+- Run `npm run smoke:site <url>` against the deployed URL. Every line should
+  say OK.
 - Run `npm run check:bedrock` with the demo credentials. Every model should
   say `OK`. If one fails, start the demo on a model that passed.
 - If the AI shows "AWS rejected the server's credentials", the credentials

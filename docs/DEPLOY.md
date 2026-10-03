@@ -69,6 +69,34 @@ Model access is set per account. On 2026-10-02 the workshop account denied
 Claude Opus 5.5, Fable 5.1 and GPT-6 Astra; see `docs/AWS_AI_PREVIEW.md` for
 what was tested there.
 
+### Optional switches (off by default)
+
+Set at deploy time; each one changes nothing until it's on. Test before turning
+it on for the demo stage.
+
+| Switch | What it does | Test first |
+|---|---|---|
+| `LUNA_GUARDRAIL=true` | Creates a Bedrock Guardrail that declines personal buy/sell/allocation advice and prompt attacks, applied to every Converse model call, in the site and in AgentCore | Deploy to a test stage, then `BEDROCK_GUARDRAIL_ID=<id> BEDROCK_GUARDRAIL_VERSION=<n> npm run check:bedrock`: advice declined, an ordinary market question allowed |
+| `BEDROCK_PROMPT_CACHE=true` | Caches the fixed system prompt and tool list on Claude models (Converse `cachePoint`) | `BEDROCK_PROMPT_CACHE=true npm run check:bedrock`: the second Claude call reports cache reads |
+
+Qwen and Gemma (Mantle endpoint) aren't covered by the guardrail switch.
+
+### Metrics
+
+Every model call writes one CloudWatch Embedded Metric Format line: namespace
+`LunaTerminal/AI`, dimensions `Model` and `Model, Stage`, metrics `LatencyMs`,
+`InputTokens`, `OutputTokens`, `CacheReadTokens` and `Errors`. Lambda turns them
+into metrics with no setup. In CloudWatch, open **Metrics → LunaTerminal/AI**
+and graph `LatencyMs` (average) and `OutputTokens` (sum) by `Model`. Lines
+from the AgentCore runtime are plain JSON in its log group, for Logs Insights.
+
+### After every deploy
+
+```bash
+npm run check:bedrock              # every model, from your credentials
+npm run smoke:site <url>           # pages, APIs, and one live chat per model
+```
+
 ## 3. Database schema (Aurora DSQL)
 
 Only with `LUNA_DATA=true`. The cluster starts empty. `sst deploy` prints its

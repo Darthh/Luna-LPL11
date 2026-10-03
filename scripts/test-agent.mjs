@@ -46,6 +46,26 @@ test("Data Automation parser extracts documents and transcripts without generate
 });
 test("workflow rejects invalid storage ownership before side effects",async()=>{
   await assert.rejects(()=>researchWorkflow({owner:"../other",id:"bad"},{}),/Invalid research owner/);
+});
+test("agent tools run concurrently but report in the model's order", async () => {
+  const wait = (ms, v) => new Promise(r => setTimeout(() => r(v), ms));
+  const events = []; const started = Date.now();
+  await runFinancialAgent(input, (t,v) => events.push({t,v}), {
+    tools: { slow: () => wait(150, {v:"slow"}), fast: () => wait(150, {v:"fast"}), broken: async () => { throw new Error("x"); } },
+    plan: async () => [{type:"tool_use",id:"1",name:"slow",input:{}},{type:"tool_use",id:"2",name:"fast",input:{}},{type:"tool_use",id:"3",name:"broken",input:{}}],
+    answer: async (_c,_s,m,_t,onText) => onText(String(m.at(-1).content.length)),
+  });
+  assert.ok(Date.now() - started < 280, "two 150 ms tools took about 150 ms, not 300");
+  assert.deepEqual(events.filter(e => e.t === "data").map(e => e.v.tool), ["slow","fast","broken"]);
+  assert.equal(events.find(e => e.v.tool === "broken").v.result.error, "This data source is currently unavailable.");
+  assert.equal(events.at(-1).v, "3");
+});
+test("a guardrail refusal is sent as the answer, not as a failure", async () => {
+  const events = [];
+  await runFinancialAgent(input, (t,v) => events.push({t,v}), {
+    plan: async () => { throw Object.assign(new Error("I can't give personal buy advice."), { name: "GuardrailIntervened" }); },
+  });
+  assert.deepEqual(events, [{ t: "text", v: "I can't give personal buy advice." }]);
 });`;
 await writeFile(".sst/agent-tests/source.mjs", source);
 await build({ entryPoints: [".sst/agent-tests/source.mjs"], bundle: true, platform: "node", target: "node22", format: "cjs", outfile: ".sst/agent-tests/test.cjs", logLevel: "silent" });
