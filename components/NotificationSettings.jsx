@@ -56,7 +56,7 @@ export default function NotificationSettings() {
       <label>Tool
         <select aria-label="Notification tool" value={tool} onChange={event => setTool(event.target.value)}>
           <option value="sentiment">Market sentiment</option>
-          <option value="rsi">1M Live chart: RSI and price</option>
+          <option value="rsi">Live chart: RSI and price</option>
         </select>
       </label>
       {tool === "sentiment" ? <>
@@ -71,7 +71,7 @@ export default function NotificationSettings() {
         </label>
         <p>Choose an RSI signal, percentage move, or price level. These alerts run in this browser while Luna Terminal is open. Rules apply to the selected symbol.</p>
         <RsiLeAlertMenu embedded enabled={enabled} onToggle={toggle} />
-        <Link href="/rsi-le">Open 1M Live chart</Link>
+        <Link href="/rsi-le">Open Live chart</Link>
       </>}
       {error && <p role="alert">{error}</p>}
     </div>
