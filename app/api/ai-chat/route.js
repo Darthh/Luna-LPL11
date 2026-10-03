@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { answerLocally, renderAnswer } from "@/lib/liloLocal";
 import { DEFAULT_HOSTED_MODEL, HOSTED_MODELS, backupModel, hostedModel } from "@/lib/hostedModels.mjs";
+import { awsChatError } from "@/lib/awsAuth.mjs";
 import { planAws, answerAws } from "@/lib/awsChat.mjs";
 import { classifyAwsError, logAwsFailure, withFailover } from "@/lib/awsErrors.mjs";
 import { invokeAgent } from "@/lib/agentCoreClient.mjs";
@@ -242,7 +243,7 @@ export async function POST(request) {
             ? "Gemini could not answer. Check the server's Google API key, model access, and quota."
             : /did not retrieve data before answering/.test(err?.message || "")
               ? "The model answered without checking live data, so the answer was withheld. Try again or rephrase."
-              : classifyAwsError(err).message);
+              : classifyAwsError(err).kind === "credentials" ? awsChatError(err) : classifyAwsError(err).message);
           return;
         }
         // The model failed - a bad key, no credit, an outage. None of those are

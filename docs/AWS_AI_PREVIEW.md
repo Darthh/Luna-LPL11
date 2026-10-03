@@ -26,6 +26,27 @@ errors rather than silently substituting a local answer.
 
 ## Testing
 
+### Recovering expired local credentials
+
+`ExpiredTokenException` means the local AWS session has expired, before model
+access is checked. Restarting Next.js or retrying inference cannot renew copied
+workshop credentials. Authenticate a renewable AWS CLI profile, for example
+`aws login --profile luna-dev` for a supported account, then set
+`BEDROCK_AWS_PROFILE=luna-dev` in the ignored `.env.local` and restart `npm run dev`.
+An existing IAM Identity Center profile can instead use
+`aws sso login --profile luna-dev`. Verify with
+`aws sts get-caller-identity --profile luna-dev` before testing chat.
+The explicit profile bypasses stale AWS keys still present in the local env file.
+Reauthentication is still necessary when the profile's login session expires.
+
+For persistent service, deploy the site and agent in an AWS account that remains
+active, using their IAM execution roles. These roles refresh credentials without
+copying local session tokens into the deployment. Workshop resources may be
+removed when the workshop ends. Bedrock inference runs on demand; keeping a
+local process or agent session alive does not extend AWS credentials or guarantee
+provider uptime. Transient Bedrock SDK requests retry up to three attempts;
+authentication and permission failures require configuration or sign-in fixes.
+
 Open `/dashboard/chat`, select an AWS model, and try:
 
 - What is market sentiment today, and where can I explore it?

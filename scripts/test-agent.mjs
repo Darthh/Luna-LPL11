@@ -69,5 +69,5 @@ test("a guardrail refusal is sent as the answer, not as a failure", async () => 
 });`;
 await writeFile(".sst/agent-tests/source.mjs", source);
 await build({ entryPoints: [".sst/agent-tests/source.mjs"], bundle: true, platform: "node", target: "node22", format: "cjs", outfile: ".sst/agent-tests/test.cjs", logLevel: "silent" });
-const result = spawnSync(process.execPath, ["--test", "lib/agentResearch.test.mjs", ".sst/agent-tests/test.cjs", "lib/awsChat.test.mjs", "lib/chatResearch.test.mjs"], { stdio: "inherit" });
+const result = spawnSync(process.execPath, ["--test", "lib/agentResearch.test.mjs", ".sst/agent-tests/test.cjs", "lib/awsChat.test.mjs", "lib/awsAuth.test.mjs", "lib/chatResearch.test.mjs"], { stdio: "inherit" });
 process.exit(result.status || 0);
