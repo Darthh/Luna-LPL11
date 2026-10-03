@@ -67,10 +67,10 @@ html[data-theme="padres"] header.site .padres-mark {
   height: 32px;
   background: url("/brand/padres-logo.svg") center / contain no-repeat;
 }
-/* The chat text stays readable over the photo while the team remains visible. */
+/* Let the team photo show through the welcome and suggested prompts. */
 html[data-theme="padres"] .ai-workspace .ai-stage {
-  background: #f0dfc5ed;
-  border: 1px solid #b8976c;
+  background: transparent;
+  border: 0;
   border-radius: 14px;
   padding: 24px;
   box-sizing: border-box;
