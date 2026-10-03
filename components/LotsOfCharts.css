@@ -1,0 +1,7 @@
+.loc-tile-head { flex-wrap: wrap; }
+.loc-replace { flex: 1 1 130px; min-width: 120px; max-width: 200px; margin-left: auto; }
+.loc-replace .whatif-ticker-wrap { width: 100%; }
+.loc-replace .whatif-ticker { width: 100%; box-sizing: border-box; height: 28px; font-size: 12px; }
+.loc-replace .whatif-suggest { width: max(100%, 250px); max-width: calc(100vw - 48px); right: 0; left: auto; }
+.loc-tile-head .loc-replace .whatif-suggest button { display: flex; width: 100%; margin: 0; padding: 8px 10px; border-radius: 0; text-align: left; }
+.loc-replace-error { margin: 0; padding: 4px 12px; font-size: 12px; color: var(--text); }
