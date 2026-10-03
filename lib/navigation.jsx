@@ -261,7 +261,7 @@ export const NAV_LINKS = [
       { href: "/chart-metrics", label: "Charted metrics", icon: ScatterIcon, widget: "scatter" },
       { href: "/portfolio-comparison", label: "Portfolio comparison", icon: CompareIcon, widget: "portfolio" },
       { href: "/regression-analysis", label: "Regression analysis", icon: ScatterIcon, widget: "regression" },
-      { href: "/graphs/historical", label: "Historical metrics (Historical)", icon: MultiplesIcon, widget: "valuation" },
+      { href: "/graphs/historical", label: "Historical metrics", icon: MultiplesIcon, widget: "valuation" },
       { href: "/graphs/comparison", label: "Company comparison (Comparison)", icon: CompareLinesIcon, widget: "valuationCompare" },
       { href: "/rsi-le", label: "1M Live chart", icon: DollarIcon },
     ],
